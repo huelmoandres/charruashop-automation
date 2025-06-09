@@ -2,6 +2,10 @@ import requests
 import csv
 import os
 from datetime import datetime
+from src.core.logger import AutomationLogger
+
+# Inicializar logger
+logger = AutomationLogger.get_instance()
 
 # Importar configuración desde archivo seguro
 try:
@@ -9,7 +13,17 @@ try:
     API_VERSION = SHOPIFY_CONFIG["API_VERSION"]
     SHOP = SHOPIFY_CONFIG["SHOP"]
     TOKEN = SHOPIFY_CONFIG["TOKEN"]
-except ImportError:
+    logger.shopify_logger.info("Configuración Shopify cargada exitosamente", extra={
+        "shop": SHOP,
+        "api_version": API_VERSION
+    })
+except ImportError as e:
+    logger.shopify_logger.error("Error importando configuración Shopify", extra={"error": str(e)})
+    logger.error_logger.error("Shopify config import failed", extra={
+        "source_module": "orders_generate_csv",
+        "error": str(e),
+        "suggestion": "Copia config/secrets.py.template como config/secrets.py y configura credenciales"
+    })
     print("❌ Error: No se pudo importar config/secrets.py")
     print("💡 Copia config/secrets.py.template como config/secrets.py y configura tus credenciales")
     exit(1)
@@ -20,7 +34,8 @@ HEADERS = {
 }
 
 # Archivo CSV con números de orden cortos
-ORDERS_CSV_FILE = "orders_export.csv"  # El usuario proporcionará este archivo
+from src.constants.paths import ORDERS_EXPORT_FILE
+ORDERS_CSV_FILE = str(ORDERS_EXPORT_FILE)
 
 # Carpeta donde se guardarán los CSVs
 OUTPUT_DIR = "src/orders/output"
@@ -31,31 +46,88 @@ def ensure_output_directory():
     """Crea la carpeta de salida si no existe"""
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
-        print(f"📁 Carpeta creada: {OUTPUT_DIR}")
+        logger.shopify_logger.info("Carpeta de salida creada", extra={"directory": OUTPUT_DIR})
+    else:
+        logger.shopify_logger.debug("Carpeta de salida ya existe", extra={"directory": OUTPUT_DIR})
 
 def get_order(order_id):
     """Obtiene información completa de un pedido"""
+    logger.shopify_logger.info("Obteniendo información de pedido", extra={"order_id": order_id})
+    
     url = f"https://{SHOP}.myshopify.com/admin/api/{API_VERSION}/orders/{order_id}.json"
-    response = requests.get(url, headers=HEADERS)
-    response.raise_for_status()
-    return response.json()["order"]
+    
+    try:
+        response = requests.get(url, headers=HEADERS)
+        response.raise_for_status()
+        order_data = response.json()["order"]
+        
+        logger.shopify_logger.info("Pedido obtenido exitosamente", extra={
+            "order_id": order_id,
+            "order_number": order_data.get("order_number", "N/A"),
+            "line_items_count": len(order_data.get("line_items", []))
+        })
+        
+        return order_data
+    except requests.RequestException as e:
+        logger.shopify_logger.error("Error obteniendo pedido", extra={
+            "order_id": order_id,
+            "error": str(e),
+            "url": url
+        })
+        logger.error_logger.error("Shopify API request failed", extra={
+            "source_module": "orders_generate_csv",
+            "function": "get_order",
+            "order_id": order_id,
+            "error": str(e)
+        })
+        raise
 
 def get_product_metafields(product_id):
     """Obtiene los metafields de un producto"""
+    logger.shopify_logger.debug("Obteniendo metafields de producto", extra={"product_id": product_id})
+    
     url = f"https://{SHOP}.myshopify.com/admin/api/{API_VERSION}/products/{product_id}/metafields.json"
-    response = requests.get(url, headers=HEADERS)
-    response.raise_for_status()
-    return response.json()["metafields"]
+    
+    try:
+        response = requests.get(url, headers=HEADERS)
+        response.raise_for_status()
+        metafields = response.json()["metafields"]
+        
+        logger.shopify_logger.debug("Metafields obtenidos exitosamente", extra={
+            "product_id": product_id,
+            "metafields_count": len(metafields)
+        })
+        
+        return metafields
+    except requests.RequestException as e:
+        logger.shopify_logger.warning("Error obteniendo metafields de producto", extra={
+            "product_id": product_id,
+            "error": str(e)
+        })
+        raise
 
 def extract_fda_id(metafields):
     """Extrae el FDA ID de los metafields"""
     for mf in metafields:
         if mf["namespace"] == "custom" and mf["key"] == "fda_id":
-            return mf["value"]
+            fda_id = mf["value"]
+            logger.shopify_logger.debug("FDA ID encontrado", extra={"fda_id": fda_id})
+            return fda_id
+    
+    logger.shopify_logger.debug("FDA ID no encontrado en metafields")
     return ""
 
 def extract_simplified_product_data(order, item):
     """Extrae solo los campos específicos requeridos"""
+    product_id = item.get("product_id")
+    product_name = item.get("title", "N/A")
+    
+    logger.shopify_logger.debug("Extrayendo datos de producto", extra={
+        "product_id": product_id,
+        "product_name": product_name,
+        "quantity": item.get("quantity", 0)
+    })
+    
     # Información de shipping
     shipping_address = order.get("shipping_address", {})
     
@@ -63,7 +135,7 @@ def extract_simplified_product_data(order, item):
     product_data = {
         "order_number": order.get("order_number", ""),
         "line_item_quantity": item.get("quantity", ""),
-        "line_item_name": item.get("title", ""),
+        "line_item_name": product_name,
         "line_item_weight": item.get("grams", ""),  # Peso en gramos
         "guia_aerea": "01",  # Valor por defecto para completar manualmente
         "shipping_name": f"{shipping_address.get('first_name', '')} {shipping_address.get('last_name', '')}".strip(),
@@ -76,32 +148,64 @@ def extract_simplified_product_data(order, item):
     }
     
     # Obtener FDA ID si el producto existe
-    product_id = item.get("product_id")
     if product_id:
         try:
+            logger.shopify_logger.debug("Obteniendo FDA ID para producto", extra={"product_id": product_id})
             metafields = get_product_metafields(product_id)
             fda_id = extract_fda_id(metafields)
             product_data["fda_id"] = fda_id
+            
+            if fda_id:
+                logger.shopify_logger.info("FDA ID encontrado para producto", extra={
+                    "product_id": product_id,
+                    "product_name": product_name,
+                    "fda_id": fda_id
+                })
+            else:
+                logger.shopify_logger.warning("Producto sin FDA ID", extra={
+                    "product_id": product_id,
+                    "product_name": product_name
+                })
         except Exception as e:
-            print(f"⚠️ Error obteniendo metafields para producto {product_id}: {e}")
+            logger.shopify_logger.warning("Error obteniendo metafields para producto", extra={
+                "product_id": product_id,
+                "product_name": product_name,
+                "error": str(e)
+            })
             product_data["fda_id"] = ""
     else:
+        logger.shopify_logger.debug("Line item sin product_id", extra={"item_name": product_name})
         product_data["fda_id"] = ""
+    
+    logger.shopify_logger.debug("Datos de producto extraídos exitosamente", extra={
+        "product_name": product_name,
+        "has_fda_id": bool(product_data["fda_id"]),
+        "shipping_country": product_data["shipping_country"]
+    })
     
     return product_data
 
 def generate_order_csv(order_id):
     """Genera un CSV simplificado para un pedido específico"""
+    logger.shopify_logger.info("=== INICIANDO GENERACIÓN CSV DE PEDIDO ===", extra={"order_id": order_id})
+    
     try:
-        print(f"📦 Procesando pedido: {order_id}")
-        
         # Obtener información del pedido
         order = get_order(order_id)
         
         # Preparar datos de productos
         products_data = []
+        logger.shopify_logger.info("Procesando line items del pedido", extra={
+            "order_id": order_id,
+            "line_items_count": len(order["line_items"])
+        })
         
-        for item in order["line_items"]:
+        for i, item in enumerate(order["line_items"]):
+            logger.shopify_logger.debug("Procesando line item", extra={
+                "item_index": i + 1,
+                "item_name": item.get("title", "N/A"),
+                "quantity": item.get("quantity", 0)
+            })
             product_data = extract_simplified_product_data(order, item)
             products_data.append(product_data)
         
@@ -110,6 +214,12 @@ def generate_order_csv(order_id):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"order_{order_number}_{timestamp}.csv"
         filepath = os.path.join(OUTPUT_DIR, filename)
+        
+        logger.shopify_logger.info("Escribiendo archivo CSV", extra={
+            "filename": filename,
+            "filepath": filepath,
+            "products_count": len(products_data)
+        })
         
         # Escribir CSV con campos específicos
         if products_data:
@@ -135,21 +245,38 @@ def generate_order_csv(order_id):
                 writer.writeheader()
                 writer.writerows(products_data)
             
+            logger.shopify_logger.info("=== CSV GENERADO EXITOSAMENTE ===", extra={
+                "filepath": filepath,
+                "products_exported": len(products_data),
+                "order_number": order_number
+            })
+            
+            # Log preview de los datos para debugging
+            logger.shopify_logger.debug("Preview de datos exportados", extra={
+                "sample_data": {field: products_data[0].get(field, "") for field in fieldnames[:5]}
+            })
+            
             print(f"✅ CSV generado: {filepath}")
             print(f"   📊 {len(products_data)} productos exportados")
             
-            # Mostrar preview de los datos
-            print(f"   📋 Preview de campos:")
-            for field in fieldnames:
-                sample_value = products_data[0].get(field, "")
-                print(f"      • {field}: {sample_value}")
-            
             return filepath
         else:
+            logger.shopify_logger.warning("No se encontraron productos en el pedido", extra={"order_id": order_id})
             print(f"⚠️ No se encontraron productos en el pedido {order_id}")
             return None
             
     except Exception as e:
+        logger.shopify_logger.error("=== ERROR GENERANDO CSV ===", extra={
+            "order_id": order_id,
+            "error": str(e),
+            "error_type": type(e).__name__
+        })
+        logger.error_logger.error("CSV generation failed", extra={
+            "source_module": "orders_generate_csv",
+            "function": "generate_order_csv",
+            "order_id": order_id,
+            "error": str(e)
+        })
         print(f"❌ Error procesando pedido {order_id}: {e}")
         return None
 
@@ -288,7 +415,7 @@ def read_short_order_numbers_from_csv(csv_file=ORDERS_CSV_FILE):
     """
     if not os.path.exists(csv_file):
         print(f"❌ Archivo no encontrado: {csv_file}")
-        print("💡 Asegúrate de tener el archivo orders_export.csv en la carpeta raíz")
+        print("💡 Asegúrate de tener el archivo orders_export.csv en la carpeta data/")
         return []
     
     print(f"📖 Leyendo órdenes desde: {csv_file}")
@@ -370,7 +497,7 @@ def main_menu():
     """Menú principal interactivo"""
     print("\n🚀 GENERADOR DE CSV PARA FDA")
     print("="*40)
-    print("1. Exportar desde archivo CSV (orders_export.csv)")
+    print("1. Exportar desde archivo CSV (data/orders_export.csv)")
     print("2. Exportar órdenes específicas por número")
     print("3. Exportar una sola orden")
     print("4. Salir")
