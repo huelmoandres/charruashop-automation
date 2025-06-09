@@ -9,6 +9,13 @@ requests>=2.25.0
 # BeautifulSoup para parsing HTML
 beautifulsoup4>=4.9.0
 
+# 🚀 Optimizaciones de Performance
+# PIL/Pillow para compresión de imágenes
+Pillow>=9.0.0
+
+# Threading y async para operaciones paralelas (ya incluido en Python 3.x)
+# concurrent.futures (built-in)
+
 # Dependencias adicionales opcionales para desarrollo
 # pytest>=7.0.0
 # black>=22.0.0

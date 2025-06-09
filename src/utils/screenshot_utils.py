@@ -1,35 +1,52 @@
 """
 Utilidades para captura automática de screenshots
 Integrado con el sistema de logging para debugging de Selenium
+Incluye optimizaciones: compresión, captura asíncrona, limpieza automática
 """
 
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Union
 from selenium import webdriver
 from selenium.common.exceptions import WebDriverException
 from src.core.logger import AutomationLogger
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from PIL import Image
+import io
+import threading
 
-class ScreenshotManager:
+class OptimizedScreenshotManager:
     """
-    Manejador de screenshots automáticos para debugging de Selenium
+    Manejador optimizado de screenshots con compresión y limpieza automática
     """
     
-    def __init__(self, logger=None):
+    def __init__(self, logger=None, max_screenshots: int = 100, compress_images: bool = True):
         """
-        Inicializa el manejador de screenshots
+        Inicializa el manejador optimizado de screenshots
         
         Args:
-            logger: Instancia del AutomationLogger (deprecated, se usa AutomationLogger directamente)
+            logger: Instancia del AutomationLogger (deprecated)
+            max_screenshots: Máximo número de screenshots por día
+            compress_images: Si comprimir las imágenes para ahorrar espacio
         """
         self.logger = AutomationLogger.get_instance()
         self.screenshots_dir = Path("logs/screenshots")
+        self.max_screenshots = max_screenshots
+        self.compress_images = compress_images
+        self._screenshot_count = 0
+        self._executor = ThreadPoolExecutor(max_workers=2)
         self._ensure_screenshot_directory()
         
-        self.logger.selenium_logger.info("=== SCREENSHOT MANAGER INICIALIZADO ===", extra={
-            "screenshots_dir": str(self.screenshots_dir)
+        self.logger.selenium_logger.info("=== SCREENSHOT MANAGER OPTIMIZADO INICIALIZADO ===", extra={
+            "screenshots_dir": str(self.screenshots_dir),
+            "max_screenshots": max_screenshots,
+            "compression": compress_images
         })
+        
+        # Limpieza automática en background
+        self._auto_cleanup()
     
     def _ensure_screenshot_directory(self):
         """Crea el directorio de screenshots si no existe"""
@@ -37,10 +54,138 @@ class ScreenshotManager:
         self.daily_dir = self.screenshots_dir / today
         self.daily_dir.mkdir(parents=True, exist_ok=True)
         
+        # Contar screenshots existentes
+        self._screenshot_count = len(list(self.daily_dir.glob("*.png")))
+        
         self.logger.selenium_logger.debug("Directorio de screenshots configurado", extra={
             "daily_dir": str(self.daily_dir),
-            "date": today
+            "date": today,
+            "existing_screenshots": self._screenshot_count
         })
+    
+    def _auto_cleanup(self):
+        """Limpieza automática de screenshots antiguos en background"""
+        def cleanup():
+            try:
+                cutoff_date = datetime.now() - timedelta(days=7)
+                cleaned = 0
+                
+                for date_dir in self.screenshots_dir.iterdir():
+                    if date_dir.is_dir():
+                        try:
+                            dir_date = datetime.strptime(date_dir.name, '%Y-%m-%d')
+                            if dir_date < cutoff_date:
+                                for screenshot in date_dir.glob("*.png"):
+                                    screenshot.unlink()
+                                    cleaned += 1
+                                if not any(date_dir.iterdir()):
+                                    date_dir.rmdir()
+                        except ValueError:
+                            continue
+                
+                if cleaned > 0:
+                    self.logger.selenium_logger.info("Auto-limpieza completada", extra={
+                        "screenshots_cleaned": cleaned
+                    })
+            except Exception as e:
+                self.logger.selenium_logger.warning("Error en auto-limpieza", extra={
+                    "error": str(e)
+                })
+        
+        # Ejecutar limpieza en background
+        self._executor.submit(cleanup)
+    
+    def _compress_image(self, filepath: str) -> bool:
+        """
+        Comprime una imagen para ahorrar espacio
+        """
+        try:
+            with Image.open(filepath) as img:
+                # Reducir calidad y tamaño si es muy grande
+                if img.size[0] > 1920 or img.size[1] > 1080:
+                    # Redimensionar manteniendo aspect ratio
+                    img.thumbnail((1920, 1080), Image.Resampling.LANCZOS)
+                
+                # Guardar con compresión optimizada
+                img.save(filepath, "PNG", optimize=True, compress_level=6)
+            
+            return True
+        except Exception as e:
+            self.logger.selenium_logger.warning("Error comprimiendo imagen", extra={
+                "filepath": filepath,
+                "error": str(e)
+            })
+            return False
+    
+    def capture_screenshot_async(self, 
+                                driver: webdriver.Chrome, 
+                                context: str = "screenshot",
+                                level: str = "INFO") -> Optional[str]:
+        """
+        Captura un screenshot de forma asíncrona y optimizada
+        """
+        # Limitar número de screenshots por día
+        if self._screenshot_count >= self.max_screenshots:
+            self.logger.selenium_logger.warning("Límite de screenshots alcanzado", extra={
+                "current_count": self._screenshot_count,
+                "max_screenshots": self.max_screenshots
+            })
+            return None
+        
+        try:
+            # Generar nombre único del archivo
+            timestamp = datetime.now().strftime('%H%M%S_%f')[:-3]  # milisegundos
+            clean_context = "".join(c for c in context if c.isalnum() or c in (' ', '-', '_')).strip()
+            clean_context = clean_context.replace(' ', '_')
+            
+            filename = f"{level.lower()}_{clean_context}_{timestamp}.png"
+            filepath = self.daily_dir / filename
+            
+            # Capturar screenshot (rápido)
+            screenshot_data = driver.get_screenshot_as_png()
+            
+            # Procesar en background (async)
+            def process_screenshot():
+                try:
+                    with open(filepath, 'wb') as f:
+                        f.write(screenshot_data)
+                    
+                    # Comprimir si está habilitado
+                    if self.compress_images:
+                        self._compress_image(str(filepath))
+                    
+                    self.logger.selenium_logger.info("Screenshot procesado", extra={
+                        "filename": filename,
+                        "compressed": self.compress_images
+                    })
+                except Exception as e:
+                    self.logger.selenium_logger.error("Error procesando screenshot", extra={
+                        "filename": filename,
+                        "error": str(e)
+                    })
+            
+            # Enviar a background
+            self._executor.submit(process_screenshot)
+            
+            self._screenshot_count += 1
+            
+            screenshot_info = {
+                "screenshot_filename": filename,
+                "screenshot_filepath": str(filepath),
+                "screenshot_context": context,
+                "screenshot_level": level,
+                "screenshot_async": True
+            }
+            
+            self.logger.selenium_logger.info("Screenshot capturado (async)", extra=screenshot_info)
+            return str(filepath)
+            
+        except Exception as e:
+            self.logger.selenium_logger.error("Error capturando screenshot async", extra={
+                "context": context,
+                "error": str(e)
+            })
+            return None
     
     def capture_screenshot(self, 
                           driver: webdriver.Chrome, 
@@ -273,27 +418,27 @@ class ScreenshotManager:
             return {'error': str(e)}
 
 # Función de conveniencia para inicializar
-def create_screenshot_manager(logger=None) -> ScreenshotManager:
+def create_screenshot_manager(logger=None) -> OptimizedScreenshotManager:
     """
-    Crea una instancia del ScreenshotManager
+    Crea una instancia del OptimizedScreenshotManager
     
     Args:
         logger: Instancia del logger (deprecated, se ignora)
         
     Returns:
-        Instancia de ScreenshotManager
+        Instancia de OptimizedScreenshotManager
     """
     logger_instance = AutomationLogger.get_instance()
-    logger_instance.selenium_logger.info("Creando nuevo ScreenshotManager")
-    return ScreenshotManager(logger)
+    logger_instance.selenium_logger.info("Creando nuevo OptimizedScreenshotManager")
+    return OptimizedScreenshotManager(logger)
 
 # Decorador para captura automática de screenshots en errores
-def auto_screenshot_on_error(screenshot_manager: ScreenshotManager, context: str = "function_error"):
+def auto_screenshot_on_error(screenshot_manager: OptimizedScreenshotManager, context: str = "function_error"):
     """
     Decorador que captura automáticamente un screenshot si la función falla
     
     Args:
-        screenshot_manager: Instancia del ScreenshotManager
+        screenshot_manager: Instancia del OptimizedScreenshotManager
         context: Contexto para el screenshot
     """
     def decorator(func):
