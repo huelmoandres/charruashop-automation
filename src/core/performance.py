@@ -1,30 +1,34 @@
 """
-Sistema de métricas de performance y profiling para FDA Automation
-Incluye tracking optimizado de operaciones, caché de selectores y análisis de tiempos
+Sistema de métricas de performance optimizado - Anti-spam
+Tracking esencial sin verbosidad excesiva
 """
 
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional, Any
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-import json
-from pathlib import Path
-from ..constants.timeouts import adaptive_timeouts
-from ..utils.selenium_helpers import ElementCache
+
+try:
+    from .optimized_logger import get_optimized_logger
+except ImportError:
+    # Fallback para compatibilidad
+    import logging
+    get_optimized_logger = lambda: logging.getLogger("performance")
+
 
 @dataclass
 class PerformanceMetric:
-    """Métrica individual de performance"""
+    """Métrica optimizada de performance"""
     name: str
     start_time: float
     end_time: Optional[float] = None
     duration: Optional[float] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
-    status: str = "running"  # running, completed, failed
+    status: str = "running"
     
     def complete(self, metadata: Optional[Dict] = None):
-        """Marca la métrica como completada"""
+        """Completa métrica sin spam de logs"""
         self.end_time = time.time()
         self.duration = self.end_time - self.start_time
         self.status = "completed"
@@ -32,7 +36,7 @@ class PerformanceMetric:
             self.metadata.update(metadata)
     
     def fail(self, error: str, metadata: Optional[Dict] = None):
-        """Marca la métrica como fallida"""
+        """Marca métrica como fallida"""
         self.end_time = time.time()
         self.duration = self.end_time - self.start_time
         self.status = "failed"
@@ -40,40 +44,27 @@ class PerformanceMetric:
         if metadata:
             self.metadata.update(metadata)
 
+
 class OptimizedPerformanceTracker:
-    """
-    Tracker de performance optimizado con análisis en tiempo real
-    """
+    """Tracker de performance sin spam - Solo métricas esenciales"""
     
     def __init__(self, logger=None, session_id: str = None):
-        """
-        Inicializa el tracker optimizado de performance
-        
-        Args:
-            logger: Instancia del logger
-            session_id: ID único de la sesión
-        """
-        self.logger = logger
-        self.session_id = session_id or f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        self.logger = logger or get_optimized_logger()
+        self.session_id = session_id or f"perf_{datetime.now().strftime('%H%M%S')}"
         self.metrics: List[PerformanceMetric] = []
         self.active_metrics: Dict[str, PerformanceMetric] = {}
         self.session_start = time.time()
         
-        # Cache para análisis rápidos
-        self._stats_cache = {}
-        self._cache_timestamp = 0
-        self._cache_ttl = 30  # segundos
+        # Configuración anti-spam
+        self.log_threshold = 2.0  # Solo loggear operaciones >2s
+        self.critical_operations = {'selenium', 'fda', 'step', 'process', 'screenshot'}
         
-        if self.logger:
-            self.logger.info("🎯 Performance tracking optimizado iniciado", extra={
-                "session_id": self.session_id
-            })
+        # Log inicial silencioso
+        self.logger.info("Tracker iniciado", module="perf")
     
     @contextmanager
     def track(self, operation_name: str, metadata: Optional[Dict] = None):
-        """
-        Context manager optimizado para tracking de operaciones
-        """
+        """Context manager silencioso para tracking"""
         metric = PerformanceMetric(
             name=operation_name,
             start_time=time.time(),
@@ -86,237 +77,130 @@ class OptimizedPerformanceTracker:
             yield metric
             metric.complete()
             
-            # Registrar en sistema de timeouts adaptativos
-            adaptive_timeouts.record_operation_time(operation_name, metric.duration)
+            # Log inteligente - solo si es relevante
+            self._smart_log(metric)
             
-            if self.logger:
-                self.logger.info(f"✅ {operation_name}: {metric.duration:.2f}s", extra={
-                    "operation": operation_name,
-                    "duration": metric.duration,
-                    "status": "completed"
-                })
         except Exception as e:
             metric.fail(str(e))
-            
-            if self.logger:
-                self.logger.error(f"❌ {operation_name}: {metric.duration:.2f}s - {e}", extra={
-                    "operation": operation_name,
-                    "duration": metric.duration,
-                    "error": str(e),
-                    "status": "failed"
-                })
+            # Errores siempre se loggean
+            self.logger.error(f"{operation_name} falló: {e}", module="perf")
             raise
         finally:
             self.metrics.append(metric)
             if operation_name in self.active_metrics:
                 del self.active_metrics[operation_name]
-            
-            # Invalidar cache de estadísticas
-            self._invalidate_stats_cache()
     
-    def track_async(self, operation_name: str, metadata: Optional[Dict] = None) -> PerformanceMetric:
-        """
-        Inicia tracking asíncrono de una operación (sin context manager)
-        """
-        metric = PerformanceMetric(
-            name=operation_name,
-            start_time=time.time(),
-            metadata=metadata or {}
-        )
-        self.active_metrics[operation_name] = metric
-        return metric
+    def _smart_log(self, metric: PerformanceMetric):
+        """Logging inteligente - reduce spam significativamente"""
+        # Solo loggear si:
+        # 1. Es una operación crítica Y dura >1s
+        # 2. Cualquier operación que dure >2s
+        # 3. Operaciones que fallan
+        
+        is_critical = any(keyword in metric.name.lower() 
+                         for keyword in self.critical_operations)
+        
+        if metric.status == "failed":
+            self.logger.error(f"❌ {metric.name}: {metric.duration:.1f}s", module="perf")
+        elif (is_critical and metric.duration > 1.0) or metric.duration > self.log_threshold:
+            if metric.duration > 10.0:
+                self.logger.warning(f"🐌 {metric.name}: {metric.duration:.1f}s", module="perf")
+            else:
+                self.logger.info(f"⏱️ {metric.name}: {metric.duration:.1f}s", module="perf")
     
-    def complete_async(self, operation_name: str, metadata: Optional[Dict] = None):
-        """
-        Completa tracking asíncrono de una operación
-        """
-        if operation_name in self.active_metrics:
-            metric = self.active_metrics[operation_name]
-            metric.complete(metadata)
-            
-            # Registrar en sistema adaptativo
-            adaptive_timeouts.record_operation_time(operation_name, metric.duration)
-            
-            self.metrics.append(metric)
-            del self.active_metrics[operation_name]
-            self._invalidate_stats_cache()
-            
-            if self.logger:
-                self.logger.info(f"✅ {operation_name}: {metric.duration:.2f}s (async)", extra={
-                    "operation": operation_name,
-                    "duration": metric.duration,
-                    "status": "completed",
-                    "async": True
-                })
+    def track_step(self, step_name: str, metadata: Optional[Dict] = None):
+        """Tracking específico para pasos (siempre relevante)"""
+        return self.track(f"step_{step_name}", metadata)
     
-    def _invalidate_stats_cache(self):
-        """Invalida el cache de estadísticas"""
-        self._cache_timestamp = 0
+    def log_milestone(self, milestone_name: str, details: str = None):
+        """Milestone importante - siempre se loggea"""
+        elapsed = time.time() - self.session_start
+        detail_str = f" - {details}" if details else ""
+        self.logger.info(f"🎯 {milestone_name} ({elapsed:.1f}s){detail_str}", module="milestone")
     
-    def _get_cached_stats(self) -> Optional[Dict]:
-        """Obtiene estadísticas del cache si están vigentes"""
-        current_time = time.time()
-        if current_time - self._cache_timestamp < self._cache_ttl:
-            return self._stats_cache
-        return None
-    
-    def get_performance_summary(self, force_refresh: bool = False) -> Dict:
-        """
-        Obtiene resumen optimizado de performance con cache
-        """
-        if not force_refresh:
-            cached = self._get_cached_stats()
-            if cached:
-                return cached
+    def get_performance_summary(self) -> Dict:
+        """Resumen compacto de performance"""
+        completed = [m for m in self.metrics if m.status == "completed"]
+        failed = [m for m in self.metrics if m.status == "failed"]
         
-        completed_metrics = [m for m in self.metrics if m.status == "completed"]
-        failed_metrics = [m for m in self.metrics if m.status == "failed"]
+        if not completed and not failed:
+            return {"status": "no_data"}
         
-        if not completed_metrics and not failed_metrics:
-            return {"error": "No hay métricas disponibles"}
+        total_ops = len(completed) + len(failed)
+        total_time = sum(m.duration for m in completed if m.duration)
+        session_time = time.time() - self.session_start
         
-        total_duration = sum(m.duration for m in completed_metrics if m.duration)
-        session_duration = time.time() - self.session_start
+        # Solo operaciones lentas para el resumen
+        slow_ops = [m for m in completed if m.duration and m.duration > 1.0]
         
-        # Análisis de operaciones por tipo
-        operation_stats = {}
-        for metric in completed_metrics:
-            if metric.name not in operation_stats:
-                operation_stats[metric.name] = {
-                    "count": 0,
-                    "total_time": 0,
-                    "min_time": float('inf'),
-                    "max_time": 0,
-                    "avg_time": 0,
-                    "recent_trend": []
-                }
-            
-            stats = operation_stats[metric.name]
-            stats["count"] += 1
-            stats["total_time"] += metric.duration
-            stats["min_time"] = min(stats["min_time"], metric.duration)
-            stats["max_time"] = max(stats["max_time"], metric.duration)
-            stats["recent_trend"].append(metric.duration)
-            
-            # Mantener solo últimas 5 mediciones para trend
-            if len(stats["recent_trend"]) > 5:
-                stats["recent_trend"].pop(0)
-        
-        # Calcular promedios
-        for stats in operation_stats.values():
-            stats["avg_time"] = stats["total_time"] / stats["count"]
-        
-        # Identificar operaciones más lentas
-        slowest_operations = sorted(
-            operation_stats.items(),
-            key=lambda x: x[1]["avg_time"],
-            reverse=True
-        )[:3]
-        
-        # Cache y system stats
-        cache = ElementCache()
-        cache_stats = cache.get_stats()
-        
-        summary = {
-            "session_id": self.session_id,
-            "session_duration": f"{session_duration:.2f}s",
-            "total_operations": len(completed_metrics),
-            "failed_operations": len(failed_metrics),
-            "success_rate": f"{(len(completed_metrics) / (len(completed_metrics) + len(failed_metrics)) * 100):.1f}%" if (completed_metrics or failed_metrics) else "0%",
-            "total_tracked_time": f"{total_duration:.2f}s",
-            "efficiency": f"{(total_duration / session_duration * 100):.1f}%" if session_duration > 0 else "0%",
-            "slowest_operations": [
-                {
-                    "name": name,
-                    "avg_time": f"{stats['avg_time']:.2f}s",
-                    "count": stats["count"]
-                }
-                for name, stats in slowest_operations
-            ],
-            "cache_performance": cache_stats,
-            "adaptive_timeouts": adaptive_timeouts.get_performance_stats(),
-            "operation_details": operation_stats
+        return {
+            "session_duration": round(session_time, 1),
+            "total_operations": total_ops,
+            "slow_operations": len(slow_ops),
+            "failed_operations": len(failed),
+            "total_processing_time": round(total_time, 1),
+            "efficiency": round((total_time / session_time * 100), 1) if session_time > 0 else 0
         }
-        
-        # Cache del resultado
-        self._stats_cache = summary
-        self._cache_timestamp = time.time()
-        
-        return summary
     
     def log_session_summary(self):
-        """
-        Log optimizado del resumen de la sesión
-        """
-        summary = self.get_performance_summary()
-        
-        if self.logger:
-            self.logger.info("📊 RESUMEN DE PERFORMANCE DE LA SESIÓN", extra=summary)
-            self.logger.info(f"   Duración total: {summary['session_duration']}")
-            self.logger.info(f"   Métricas totales: {summary['total_operations']}")
-            self.logger.info(f"   Tasa de éxito: {summary['success_rate']}")
-            
-            if summary["slowest_operations"]:
-                self.logger.info("🐌 Pasos más lentos:")
-                for op in summary["slowest_operations"]:
-                    self.logger.info(f"   • {op['name']}: {op['avg_time']}")
-            
-            if summary["failed_operations"] > 0:
-                self.logger.warning("⚠️ Pasos con más fallos:")
-                # Análisis de fallos podría agregarse aquí
-        
-        # Guardar resumen detallado en archivo
-        self._save_session_report(summary)
-    
-    def _save_session_report(self, summary: Dict):
-        """
-        Guarda reporte detallado de la sesión en archivo
-        """
+        """Resumen final compacto"""
         try:
-            reports_dir = Path("logs/performance")
-            reports_dir.mkdir(parents=True, exist_ok=True)
+            summary = self.get_performance_summary()
             
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            report_file = reports_dir / f"performance_report_{timestamp}.json"
+            if summary.get("status") == "no_data":
+                return
             
-            # Preparar datos para JSON
-            json_summary = summary.copy()
-            json_summary["metrics_detail"] = [
-                {
-                    "name": m.name,
-                    "duration": m.duration,
-                    "status": m.status,
-                    "metadata": m.metadata
-                }
-                for m in self.metrics
-            ]
+            # Solo mostrar resumen si hay datos significativos
+            if (summary["session_duration"] > 30 or 
+                summary["slow_operations"] > 2 or 
+                summary["failed_operations"] > 0):
+                
+                self.logger.info(
+                    f"Sesión: {summary['session_duration']}s, "
+                    f"{summary['slow_operations']} ops lentas, "
+                    f"{summary['failed_operations']} fallos",
+                    module="summary"
+                )
+                
+                if summary["efficiency"] < 50 and summary["session_duration"] > 60:
+                    self.logger.warning(f"Eficiencia baja: {summary['efficiency']}%", module="summary")
             
-            with open(report_file, 'w', encoding='utf-8') as f:
-                json.dump(json_summary, f, indent=2, ensure_ascii=False)
-            
-            if self.logger:
-                self.logger.info("📋 Reporte de performance guardado", extra={
-                    "report_file": str(report_file)
+        except Exception:
+            pass  # Silenciar errores de resumen
+    
+    def get_critical_metrics(self) -> List[Dict]:
+        """Solo métricas críticas para debugging"""
+        critical_metrics = []
+        
+        for metric in self.metrics:
+            if (metric.duration and metric.duration > 5.0) or metric.status == "failed":
+                critical_metrics.append({
+                    "name": metric.name,
+                    "duration": metric.duration,
+                    "status": metric.status,
+                    "metadata": metric.metadata
                 })
         
-        except Exception as e:
-            if self.logger:
-                self.logger.warning("Error guardando reporte de performance", extra={
-                    "error": str(e)
-                })
+        return critical_metrics
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.log_session_summary()
+
 
 def create_performance_tracker(logger=None, session_id: str = None) -> OptimizedPerformanceTracker:
-    """
-    Crea una instancia optimizada del PerformanceTracker
-    
-    Args:
-        logger: Instancia del logger
-        session_id: ID único de la sesión
-        
-    Returns:
-        Instancia de OptimizedPerformanceTracker
-    """
-    if logger:
-        logger.info("🎯 Performance tracking optimizado iniciado")
-    
-    return OptimizedPerformanceTracker(logger, session_id) 
+    """Factory function para crear tracker optimizado"""
+    return OptimizedPerformanceTracker(logger, session_id)
+
+
+# Singleton para uso global
+_global_tracker = None
+
+def get_global_performance_tracker() -> OptimizedPerformanceTracker:
+    """Obtiene instancia global del tracker"""
+    global _global_tracker
+    if _global_tracker is None:
+        _global_tracker = OptimizedPerformanceTracker()
+    return _global_tracker 

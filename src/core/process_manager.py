@@ -13,13 +13,13 @@ from ..constants.enums import (
     ProcessStep, ProcessResult, SystemConfiguration, 
     UserResponse, ProcessError, SystemModule
 )
-from ..constants.timings import SleepTimes, ElementTimeouts
+from ..constants.timeouts import SleepTimes, ElementTimeouts
 from ..constants.messages import ProcessMessages, LogMessages, UserMessages
-from ..fda.automation.step_01_copy_selection import execute_step_01
-from ..fda.automation.step_02_edit_information import execute_step_02_edit_information
-from ..fda.automation.step_03_final_save import execute_step_03
-from ..fda.login import complete_fda_login
-from ..core.wait_helper import WaitHelper
+from ..fda.prior_notice.creation.step_01_selection import execute_step_01
+from ..fda.prior_notice.creation.step_02_edit_information import execute_step_02
+from ..fda.prior_notice.creation.step_03_final_save import execute_step_03
+from ..fda.authentication.fda_login import complete_fda_login
+from ..utils.selenium_helpers import WaitHelper
 
 
 class ProcessManager:
@@ -244,7 +244,7 @@ class ProcessManager:
             # PASO 2: Edit Information
             result_step2 = self.execute_step_with_tracking(
                 driver, ProcessStep.STEP_02_EDIT_INFO,
-                execute_step_02_edit_information, wait=SleepTimes.SHORT_WAIT
+                execute_step_02, wait=SleepTimes.SHORT_WAIT
             )
             
             if not result_step2.success:

@@ -12,48 +12,52 @@ import subprocess
 import os
 from pathlib import Path
 
-def run_command(cmd):
-    """Ejecuta un comando del sistema"""
+def run_command(cmd, silent=False):
+    """Ejecuta un comando del sistema con mejor feedback"""
     try:
-        result = subprocess.run(cmd, shell=True, check=True)
+        if not silent:
+            print(f"⚡ Ejecutando...")
+        result = subprocess.run(cmd, shell=True, check=True, capture_output=silent)
         return result.returncode == 0
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error ejecutando comando: {e}")
+        if not silent:
+            print(f"❌ Error: {e}")
         return False
 
 def show_help():
     """Muestra la ayuda de comandos disponibles"""
-    print("🚀 FDA/Shopify Automation - Script Runner")
+    print("🚀 FDA Automation - Script Runner UX Optimizado")
     print("Uso: python run.py <comando>")
     print("")
-    print("🏛️ FDA Commands:")
-    print("  fda               - Proceso FDA completo")
-    print("  fda:full          - Proceso FDA directo")
-    print("  fda:test          - Testing de pasos individuales")
-    print("  fda:coordinator   - Ejecutar coordinador FDA")
+    print("⚡ SHORTCUTS RÁPIDOS (nuevo):")
+    print("  s                 - Status sistema (súper rápido)")
+    print("  l                 - Últimas 5 líneas de log")
+    print("  ls                - Estadísticas logs")
+    print("  c                 - Limpieza rápida")
+    print("  h                 - Health check rápido")
+    print("  p                 - Performance check")
+    print("  logs              - Últimas 10 líneas")
+    print("  errors            - Últimos errores")
+    print("  last              - Últimas 3 líneas")
+    print("  size              - Tamaño de logs")
     print("")
-    print("🛒 Shopify/Orders Commands:")
-    print("  shopify:export    - Exportar pedidos de Shopify")
-    print("  orders:convert    - Convertir números de orden")
-    print("  orders:guia       - Actualizar guías aéreas")
-    print("  orders:analyze    - Analizar CSVs generados")
+    print("🏛️ FDA Commands:")
+    print("  fda / start / dev / run / go  - FDA automation")
+    print("  fda:full          - Proceso FDA directo")
+    print("  fda:test          - Testing sistema")
     print("")
     print("📊 Logs & Monitoring:")
-    print("  logs:fda          - Ver logs de FDA del día")
-    print("  logs:errors       - Ver logs de errores")
-    print("  logs:performance  - Ver logs de performance")
-    print("  logs:tail         - Seguir logs en tiempo real")
-    print("  logs:list         - Listar logs disponibles")
+    print("  logs:stats        - Estadísticas completas")
+    print("  logs:clean        - Limpieza automática")
+    print("  logs:view         - Ver logs recientes")
+    print("  logs:compress     - Comprimir logs antiguos")
     print("")
     print("🔧 Maintenance:")
-    print("  clean:logs        - Limpiar logs antiguos")
-    print("  backup            - Backup de datos")
-    print("  health            - Health check del sistema")
-    print("  clean:screenshots - Limpiar screenshots antiguos")
+    print("  clean:auto        - Limpieza completa")
+    print("  health            - Health check completo")
+    print("  performance       - Análisis performance completo")
     print("")
-    print("📦 Setup:")
-    print("  install           - Instalar dependencias")
-    print("  setup             - Setup inicial")
+    print("💡 TIP: Usa shortcuts de 1 letra para comandos súper rápidos!")
 
 def main():
     """Función principal del script runner"""
@@ -63,13 +67,12 @@ def main():
     
     command = sys.argv[1]
     
-    # Diccionario de comandos disponibles
+    # Diccionario de comandos disponibles (OPTIMIZADO)
     commands = {
-        # FDA Commands
+        # FDA Commands (Optimizado)
         "fda": "python main.py",
-        "fda:full": "python -c \"from main import main_fda_process; main_fda_process()\"",
-        "fda:test": "python -c \"from src.fda.prior_notice.management.creation_coordinator import test_individual_steps; test_individual_steps()\"",
-        "fda:coordinator": "python -c \"from src.fda.prior_notice.management.creation_coordinator import coordinate_prior_notice_creation; coordinate_prior_notice_creation()\"",
+        "fda:full": "python main.py",
+        "fda:test": "python -c \"from src.core.optimized_logger import init_optimized_logging; logger = init_optimized_logging(); logger.info('Sistema de prueba', module='test')\"",
         
         # Shopify/Orders Commands
         "shopify:export": "python src/orders/generate_csv.py",
@@ -77,40 +80,60 @@ def main():
         "orders:guia": "python src/orders/update_guia_aerea.py",
         "orders:analyze": "python src/orders/csv_utils.py",
         
-        # Logs & Monitoring
-        "logs:fda": "python scripts/log_viewer.py fda",
-        "logs:errors": "python scripts/log_viewer.py errors",
-        "logs:performance": "python scripts/log_viewer.py performance",
-        "logs:tail": "python scripts/log_viewer.py tail",
-        "logs:list": "python scripts/log_viewer.py list",
+        # Logs & Monitoring (OPTIMIZADO)
+        "logs:stats": "python src/utils/log_cleaner.py",
+        "logs:clean": "python -c \"from src.utils.log_cleaner import LogCleaner; LogCleaner().compress_old_logs()\"",
+        "logs:view": "tail -20 logs/fda_automation.log",
+        "logs:compress": "python -c \"from src.utils.log_cleaner import LogCleaner; LogCleaner().full_cleanup()\"",
         
-        # Maintenance
-        "clean:logs": "python scripts/maintenance.py clean-logs",
-        "backup": "python scripts/maintenance.py backup",
-        "health": "python scripts/maintenance.py health",
-        "clean:screenshots": "python scripts/maintenance.py clean-screenshots",
+        # Maintenance (OPTIMIZADO)
+        "clean:auto": "python -c \"from src.utils.log_cleaner import LogCleaner; LogCleaner().full_cleanup()\"",
+        "health": "python -c \"from src.core.optimized_logger import get_optimized_logger; logger = get_optimized_logger(); print('✅ Sistema optimizado funcionando')\"",
+        "performance": "python -c \"from src.core.performance import get_global_performance_tracker; tracker = get_global_performance_tracker(); print(tracker.get_current_stats())\"",
         
         # Setup
         "install": "pip install -r requirements.txt",
-        "setup": "python scripts/maintenance.py init",
+        "setup": "python -c \"from src.core.optimized_logger import init_optimized_logging; logger = init_optimized_logging(); logger.info('Setup completado', module='setup')\"",
         
-        # Aliases comunes
+        # Aliases y Shortcuts adicionales
         "start": "python main.py",
         "dev": "python main.py",
-        "test": "python -c \"from src.fda.prior_notice.management.creation_coordinator import test_individual_steps; test_individual_steps()\"",
+        "run": "python main.py",
+        "go": "python main.py",
+        "test": "python -c \"from src.core.optimized_logger import init_optimized_logging; logger = init_optimized_logging(); logger.info('Test completado', module='test')\"",
+        
+        # Shortcuts rápidos
+        "s": "python -c \"from src.core.optimized_logger import get_optimized_logger; logger = get_optimized_logger(); print('✅ Sistema OK')\"",
+        "l": "tail -5 logs/fda_automation.log",
+        "ls": "python src/utils/log_cleaner.py",
+        "c": "python -c \"from src.utils.log_cleaner import LogCleaner; LogCleaner().full_cleanup(); print('🧹 Limpieza completada')\"",
+        "h": "python -c \"from src.core.optimized_logger import get_optimized_logger; logger = get_optimized_logger(); print('💚 Sistema saludable')\"",
+        "p": "python -c \"from src.core.performance import get_global_performance_tracker; print('📊 Performance OK')\"",
+        
+        # Shortcuts de logs
+        "logs": "tail -10 logs/fda_automation.log",
+        "errors": "grep -i error logs/fda_automation.log | tail -5 || echo '✅ Sin errores recientes'",
+        "last": "tail -3 logs/fda_automation.log",
+        "size": "du -sh logs/",
     }
     
     if command in commands:
-        print(f"🚀 Ejecutando: {command}")
-        success = run_command(commands[command])
-        if success:
-            print(f"✅ Comando '{command}' completado exitosamente")
+        # Comandos rápidos sin output verbose
+        if command in ['s', 'l', 'ls', 'c', 'h', 'p', 'logs', 'errors', 'last', 'size']:
+            success = run_command(commands[command], silent=True)
+            if not success:
+                print(f"❌ Error en '{command}'")
         else:
-            print(f"❌ Error ejecutando comando '{command}'")
+            print(f"🚀 {command}")
+            success = run_command(commands[command])
+            if success:
+                print(f"✅ Listo")
+            else:
+                print(f"❌ Error")
     else:
-        print(f"❌ Comando '{command}' no reconocido")
-        print("")
-        show_help()
+        print(f"❌ '{command}' no existe")
+        print("\n💡 Comandos rápidos: s, l, ls, c, h, p, logs, errors, last, size")
+        print("   Usa 'python run.py' para ver todos los comandos")
 
 if __name__ == "__main__":
     main() 

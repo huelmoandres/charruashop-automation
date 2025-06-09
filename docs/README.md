@@ -37,6 +37,8 @@ Sistema completo de automatización para gestión de **Prior Notices de FDA** y 
 - ✅ Sistema de logging production-ready por categorías
 - ✅ Performance tracking con métricas detalladas
 - ✅ Screenshots automáticos en errores
+- ✅ **🆕 Sistema UX Optimizado** - Comandos súper rápidos de 1 letra
+- ✅ **🆕 Shortcuts de productividad** - 10+ comandos instantáneos
 - ✅ **Sistema de scripts simplificados** (Makefile + run.py)
 - ✅ Comandos tipo `npm run` para todas las operaciones
 - ✅ Análisis de CSVs generados
@@ -156,6 +158,11 @@ python run.py health
 make help
 # o
 python run.py
+
+# 🆕 Probar shortcuts súper rápidos (NUEVO)
+make s          # Status sistema (1 segundo)
+make l          # Ver últimos logs (1 segundo)
+make h          # Health check (1 segundo)
 ```
 
 ## ⚙️ Configuración
@@ -302,12 +309,46 @@ python src/orders/csv_utils.py
 - Genera reportes resumen
 - Valida estructura de datos
 
+## ⚡ **NUEVO: Shortcuts Súper Rápidos (UX Optimizado)**
+
+### **🆕 Comandos de 1 Letra para Máxima Productividad:**
+
+| Comando | Función | Tiempo | Descripción |
+|---------|---------|--------|-------------|
+| `make s` | Status | ~1s | Estado del sistema instantáneo |
+| `make l` | Logs | ~1s | Últimas 5 líneas de logs |
+| `make ls` | Stats | ~2s | Estadísticas completas |
+| `make c` | Clean | ~3s | Limpieza rápida automática |
+| `make h` | Health | ~1s | Health check del sistema |
+| `make p` | Performance | ~2s | Métricas de performance |
+
+### **🆕 FDA con Múltiples Aliases:**
+```bash
+# Todas estas formas ejecutan FDA:
+make fda        # Original
+make start      # Intuitivo
+make dev        # Desarrollo
+make run        # Estándar
+make go         # Súper rápido
+
+# También funciona con python:
+python run.py fda / start / dev / run / go
+```
+
+### **🆕 Comandos de Monitoreo Rápido:**
+```bash
+make logs       # Últimas 10 líneas
+make errors     # Errores recientes
+make last       # Últimas 3 líneas
+make size       # Tamaño de logs
+```
+
 ## 🚀 Sistema de Scripts Simplificados
 
 ### **Comandos estilo npm run**
 El proyecto incluye un sistema híbrido de comandos simplificados:
 
-#### **Opción 1: Makefile (Recomendada en macOS/Linux)**
+#### **Opción 1: Makefile (MÁS RÁPIDA - Recomendada)**
 ```bash
 make fda                # Proceso FDA completo
 make shopify-export     # Exportar de Shopify  
@@ -340,6 +381,8 @@ python run.py               # Ver todos los comandos
 - 🔍 **Session tracking** completo
 - 📁 **Rotación automática** de archivos por fecha
 - 🎛️ **Configuración flexible** de niveles de log
+- ⚡ **🆕 Comandos súper rápidos** - Status instantáneo con `make s`
+- 🎯 **🆕 UX optimizado** - Feedback contextual y tips útiles
 
 ### **Estructura de Logs**
 ```

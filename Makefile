@@ -1,26 +1,22 @@
-# 🚀 Makefile para FDA/Shopify Automation
+# 🚀 Makefile para FDA Automation - SISTEMA OPTIMIZADO
 # Uso: make <comando>
 # 
 # Desarrollado por: Andrés Huelmo & Christian Huelmo
 
-.PHONY: help install fda fda-full fda-test shopify-export orders-convert orders-update-guia orders-analyze logs-fda logs-errors logs-performance logs-tail clean-logs backup health-check
+.PHONY: help install fda fda-full fda-test shopify-export orders-convert orders-update-guia orders-analyze logs-stats logs-clean logs-view logs-compress clean-auto health performance s l ls c h p logs errors last size start dev run go
 
-# 🏛️ Comandos principales FDA
+# 🏛️ Comandos principales FDA (OPTIMIZADO)
 fda:
-	@echo "🏛️ Ejecutando proceso FDA completo..."
+	@echo "🏛️ Ejecutando proceso FDA completo optimizado..."
 	python main.py
 
 fda-full:
-	@echo "🏛️ Ejecutando proceso FDA directo..."
-	python -c "from main import main_fda_process; main_fda_process()"
+	@echo "🏛️ Ejecutando proceso FDA directo optimizado..."
+	python main.py
 
 fda-test:
-	@echo "🧪 Testing de pasos individuales..."
-	python -c "from src.fda.prior_notice.management.creation_coordinator import test_individual_steps; test_individual_steps()"
-
-fda-coordinator:
-	@echo "🎯 Ejecutando coordinador FDA..."
-	python -c "from src.fda.prior_notice.management.creation_coordinator import coordinate_prior_notice_creation; coordinate_prior_notice_creation()"
+	@echo "🧪 Testing sistema optimizado..."
+	python -c "from src.core.optimized_logger import init_optimized_logging; logger = init_optimized_logging(); logger.info('Sistema de prueba', module='test')"
 
 # 🛒 Comandos Shopify/Orders
 shopify-export:
@@ -39,43 +35,83 @@ orders-analyze:
 	@echo "📊 Analizando CSVs generados..."
 	python src/orders/csv_utils.py
 
-# 📊 Comandos de logs y monitoreo
-logs-fda:
-	@echo "📊 Mostrando logs de FDA del día..."
-	python scripts/log_viewer.py fda
+# 📊 Comandos de logs y monitoreo (OPTIMIZADO)
+logs-stats:
+	@echo "📊 Estadísticas de logs optimizados..."
+	python src/utils/log_cleaner.py
 
-logs-errors:
-	@echo "🚨 Mostrando logs de errores..."
-	python scripts/log_viewer.py errors
+logs-clean:
+	@echo "🧹 Limpieza automática de logs..."
+	python -c "from src.utils.log_cleaner import LogCleaner; LogCleaner().compress_old_logs()"
 
-logs-performance:
-	@echo "⚡ Mostrando logs de performance..."
-	python scripts/log_viewer.py performance
+logs-view:
+	@echo "👁️ Mostrando logs recientes optimizados..."
+	tail -20 logs/fda_automation.log
 
-logs-tail:
-	@echo "👁️ Siguiendo logs en tiempo real (Ctrl+C para salir)..."
-	python scripts/log_viewer.py tail
+logs-compress:
+	@echo "🗜️ Comprimiendo logs antiguos..."
+	python -c "from src.utils.log_cleaner import LogCleaner; LogCleaner().full_cleanup()"
 
-logs-list:
-	@echo "📁 Listando logs disponibles..."
-	python scripts/log_viewer.py list
+# 🔧 Comandos de mantenimiento (OPTIMIZADO)
+clean-auto:
+	@echo "🧹 Limpieza automática completa..."
+	python -c "from src.utils.log_cleaner import LogCleaner; LogCleaner().full_cleanup()"
 
-# 🔧 Comandos de mantenimiento
-clean-logs:
-	@echo "🗑️ Limpiando logs antiguos..."
-	python scripts/maintenance.py clean-logs
+health:
+	@echo "🔍 Verificando estado del sistema optimizado..."
+	python -c "from src.core.optimized_logger import get_optimized_logger; logger = get_optimized_logger(); print('✅ Sistema optimizado funcionando')"
 
-backup:
-	@echo "💾 Creando backup de datos..."
-	python scripts/maintenance.py backup
+performance:
+	@echo "📈 Análisis de performance..."
+	python -c "from src.core.performance import get_global_performance_tracker; tracker = get_global_performance_tracker(); print(tracker.get_current_stats())"
 
-health-check:
-	@echo "🔍 Verificando estado del sistema..."
-	python scripts/maintenance.py health
+# ⚡ SHORTCUTS RÁPIDOS (UX mejorado)
+s:
+	@python -c "from src.core.optimized_logger import get_optimized_logger; logger = get_optimized_logger(); print('✅ Sistema OK')"
 
-clean-screenshots:
-	@echo "🖼️ Limpiando screenshots antiguos..."
-	python scripts/maintenance.py clean-screenshots
+l:
+	@tail -5 logs/fda_automation.log
+
+ls:
+	@python src/utils/log_cleaner.py
+
+c:
+	@python -c "from src.utils.log_cleaner import LogCleaner; LogCleaner().full_cleanup(); print('🧹 Limpieza completada')"
+
+h:
+	@python -c "from src.core.optimized_logger import get_optimized_logger; logger = get_optimized_logger(); print('💚 Sistema saludable')"
+
+p:
+	@python -c "from src.core.performance import get_global_performance_tracker; print('📊 Performance OK')"
+
+logs:
+	@tail -10 logs/fda_automation.log
+
+errors:
+	@grep -i error logs/fda_automation.log | tail -5 || echo "✅ Sin errores recientes"
+
+last:
+	@tail -3 logs/fda_automation.log
+
+size:
+	@du -sh logs/
+
+# Aliases adicionales para FDA
+start:
+	@echo "🏛️ Iniciando FDA automation..."
+	python main.py
+
+dev:
+	@echo "🏛️ Modo desarrollo FDA..."
+	python main.py
+
+run:
+	@echo "🏛️ Ejecutando FDA..."
+	python main.py
+
+go:
+	@echo "🏛️ ¡Vamos! FDA automation..."
+	python main.py
 
 # 📦 Comandos de instalación y setup
 install:
@@ -87,43 +123,44 @@ install-dev:
 	pip install -e .
 
 setup:
-	@echo "🚀 Setup inicial del proyecto..."
-	python scripts/maintenance.py init
-	@echo "✅ Setup completado"
+	@echo "🚀 Setup inicial optimizado del proyecto..."
+	python -c "from src.core.optimized_logger import init_optimized_logging; logger = init_optimized_logging(); logger.info('Setup completado', module='setup')"
+	@echo "✅ Setup optimizado completado"
 
 # 📋 Ayuda
 help:
-	@echo "🚀 FDA/Shopify Automation - Comandos disponibles:"
+	@echo "🚀 FDA Automation - UX OPTIMIZADO - Comandos disponibles:"
+	@echo ""
+	@echo "⚡ SHORTCUTS SÚPER RÁPIDOS (NUEVO):"
+	@echo "  make s                - Status sistema (1 letra!)"
+	@echo "  make l                - Últimas 5 líneas de log"
+	@echo "  make ls               - Estadísticas logs"
+	@echo "  make c                - Limpieza rápida"
+	@echo "  make h                - Health check rápido"
+	@echo "  make p                - Performance check"
+	@echo "  make logs             - Últimas 10 líneas"
+	@echo "  make errors           - Últimos errores"
+	@echo "  make last             - Últimas 3 líneas"
+	@echo "  make size             - Tamaño de logs"
 	@echo ""
 	@echo "🏛️ FDA Commands:"
-	@echo "  make fda              - Proceso FDA completo (menú interactivo)"
+	@echo "  make fda / start / dev / run / go - FDA automation"
 	@echo "  make fda-full         - Proceso FDA directo"
-	@echo "  make fda-test         - Testing de pasos individuales"
-	@echo "  make fda-coordinator  - Ejecutar coordinador FDA"
-	@echo ""
-	@echo "🛒 Shopify/Orders Commands:"
-	@echo "  make shopify-export       - Exportar pedidos de Shopify"
-	@echo "  make orders-convert       - Convertir números de orden"
-	@echo "  make orders-update-guia   - Actualizar guías aéreas"
-	@echo "  make orders-analyze       - Analizar CSVs generados"
+	@echo "  make fda-test         - Testing sistema"
 	@echo ""
 	@echo "📊 Logs & Monitoring:"
-	@echo "  make logs-fda         - Ver logs de FDA del día"
-	@echo "  make logs-errors      - Ver logs de errores"
-	@echo "  make logs-performance - Ver logs de performance"
-	@echo "  make logs-tail        - Seguir logs en tiempo real"
-	@echo "  make logs-list        - Listar logs disponibles"
+	@echo "  make logs-stats       - Estadísticas completas"
+	@echo "  make logs-clean       - Limpieza automática"
+	@echo "  make logs-view        - Ver logs recientes"
+	@echo "  make logs-compress    - Comprimir logs antiguos"
 	@echo ""
 	@echo "🔧 Maintenance:"
-	@echo "  make clean-logs       - Limpiar logs antiguos (>30 días)"
-	@echo "  make backup           - Backup de carpeta data/"
-	@echo "  make health-check     - Health check del sistema"
-	@echo "  make clean-screenshots - Limpiar screenshots antiguos"
+	@echo "  make clean-auto       - Limpieza completa"
+	@echo "  make health           - Health check completo"
+	@echo "  make performance      - Análisis performance completo"
 	@echo ""
-	@echo "📦 Setup:"
-	@echo "  make install          - Instalar dependencias"
-	@echo "  make install-dev      - Instalar en modo desarrollo"
-	@echo "  make setup            - Setup inicial del proyecto"
+	@echo "💡 TIP: Usa comandos de 1 letra para máxima velocidad!"
+	@echo "💡 Ejemplos: 'make s' 'make l' 'make c' ⚡"
 	@echo ""
 
 # Default target

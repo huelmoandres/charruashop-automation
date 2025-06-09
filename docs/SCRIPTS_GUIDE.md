@@ -1,15 +1,26 @@
-# 🚀 Guía de Scripts - Makefile + run.py
+# 🚀 Guía de Scripts - UX OPTIMIZADO
 
-Sistema híbrido de comandos simplificados para FDA/Shopify Automation, similar a `npm run` de Node.js.
+Sistema híbrido de comandos **súper rápidos** para FDA Automation, con shortcuts de 1 letra para máxima productividad.
 
-## 🎯 **Dos Formas de Ejecutar Comandos**
+## ⚡ **NUEVO: Shortcuts Súper Rápidos**
 
-### **Opción 1: Makefile (Recomendada)**
+### **Comandos de 1 Letra (MÁXIMA VELOCIDAD):**
+```bash
+make s          # Status sistema (1 segundo)
+make l          # Últimas líneas log
+make c          # Limpieza rápida
+make h          # Health check
+make p          # Performance
+```
+
+### **Dos Formas de Ejecutar:**
+
+#### **Opción 1: Makefile (MÁS RÁPIDA - Recomendada)**
 ```bash
 make <comando>
 ```
 
-### **Opción 2: Script Python (Cross-platform)**
+#### **Opción 2: Script Python (Cross-platform)**
 ```bash
 python run.py <comando>
 ```
@@ -18,18 +29,22 @@ python run.py <comando>
 
 ## 🏛️ **Comandos FDA**
 
-### **Proceso FDA Completo**
+### **🆕 FDA con Múltiples Aliases (NUEVO):**
 ```bash
-# Makefile
-make fda
+# Todas estas formas ejecutan FDA:
+make fda        # Original
+make start      # Intuitivo
+make dev        # Desarrollo  
+make run        # Estándar
+make go         # Súper rápido
 
-# run.py
-python run.py fda
+# Equivalente en python:
+python run.py fda / start / dev / run / go
 ```
-- Ejecuta `main.py` con menú interactivo
-- Ideal para uso normal
+- Ejecuta `main.py` completo
+- Mismo comando, múltiples formas de recordarlo
 
-### **Proceso FDA Directo**
+### **FDA Proceso Directo**
 ```bash
 # Makefile
 make fda-full
@@ -37,7 +52,7 @@ make fda-full
 # run.py  
 python run.py fda:full
 ```
-- Ejecuta el proceso FDA sin menú
+- Proceso FDA sin menú
 - Para automatización
 
 ### **Testing de Pasos**
@@ -48,19 +63,8 @@ make fda-test
 # run.py
 python run.py fda:test
 ```
-- Testing de pasos individuales
-- Útil para debugging
-
-### **Coordinador FDA**
-```bash
-# Makefile
-make fda-coordinator
-
-# run.py
-python run.py fda:coordinator
-```
-- Ejecuta el coordinador directamente
-- Para desarrollo/testing
+- Testing pasos individuales
+- Debugging
 
 ---
 
@@ -112,9 +116,26 @@ python run.py orders:analyze
 
 ---
 
-## 📊 **Comandos de Logs y Monitoreo**
+## 📊 **🆕 Comandos de Monitoreo SÚPER RÁPIDOS**
 
-### **Ver Logs de FDA**
+### **Status y Monitoring (1 Letra):**
+```bash
+make s          # Status sistema (1 segundo)
+make l          # Últimas 5 líneas (1 segundo)
+make ls         # Estadísticas completas (2 segundos)
+make h          # Health check (1 segundo)
+make p          # Performance check (2 segundos)
+```
+
+### **Logs Específicos:**
+```bash
+make logs       # Últimas 10 líneas
+make errors     # Errores recientes
+make last       # Últimas 3 líneas
+make size       # Tamaño de logs
+```
+
+### **Logs Avanzados:**
 ```bash
 # Makefile
 make logs-fda
@@ -122,27 +143,7 @@ make logs-fda
 # run.py
 python run.py logs:fda
 ```
-- Muestra logs de FDA del día actual
-
-### **Ver Logs de Errores**
-```bash
-# Makefile
-make logs-errors
-
-# run.py
-python run.py logs:errors
-```
-- Muestra errores del día actual
-
-### **Ver Logs de Performance**
-```bash
-# Makefile
-make logs-performance
-
-# run.py
-python run.py logs:performance
-```
-- Muestra métricas de rendimiento
+- Logs FDA del día actual
 
 ### **Seguir Logs en Tiempo Real**
 ```bash
@@ -152,24 +153,21 @@ make logs-tail
 # run.py
 python run.py logs:tail
 ```
-- Sigue logs de FDA en tiempo real
+- Sigue logs en tiempo real
 - Ctrl+C para salir
-
-### **Listar Logs Disponibles**
-```bash
-# Makefile
-make logs-list
-
-# run.py
-python run.py logs:list
-```
-- Lista todos los logs por categoría y fecha
 
 ---
 
 ## 🔧 **Comandos de Mantenimiento**
 
-### **Limpiar Logs Antiguos**
+### **🆕 Limpieza Súper Rápida:**
+```bash
+make c          # Limpieza rápida (3 segundos)
+```
+- Comprime logs antiguos
+- Elimina archivos temporales
+
+### **Limpieza Avanzada:**
 ```bash
 # Makefile
 make clean-logs
@@ -177,28 +175,17 @@ make clean-logs
 # run.py
 python run.py clean:logs
 ```
-- Elimina logs más antiguos de 30 días
+- Elimina logs >30 días
 - Libera espacio en disco
 
-### **Backup de Datos**
+### **Health Check:**
 ```bash
-# Makefile
-make backup
+make h          # Health check rápido (1 segundo)
 
-# run.py
-python run.py backup
-```
-- Crea backup timestamped de `data/`
-- Guarda en `backups/`
-
-### **Health Check del Sistema**
-```bash
-# Makefile
-make health-check
-
-# run.py
+# Versión completa:
 python run.py health
 ```
+- Verifica estado del sistema
 - Verifica estructura de directorios
 - Comprueba archivos críticos
 - Revisa espacio en disco
