@@ -6,6 +6,55 @@ Este proyecto tiene dos funcionalidades principales:
 
 ---
 
+## ⚡ **NUEVO: Shortcuts Súper Rápidos (UX Optimizado)**
+
+### **Comandos de 1 Letra para Máxima Productividad:**
+
+| Comando | Función | Tiempo |
+|---------|---------|--------|
+| `make s` | Status sistema | ~1s |
+| `make l` | Últimas 5 líneas log | ~1s |
+| `make ls` | Estadísticas logs | ~2s |
+| `make c` | Limpieza rápida | ~3s |
+| `make h` | Health check | ~1s |
+| `make p` | Performance check | ~2s |
+| `make logs` | Últimas 10 líneas | ~1s |
+| `make errors` | Ver errores recientes | ~2s |
+| `make last` | Últimas 3 líneas | ~1s |
+| `make size` | Tamaño de logs | ~1s |
+
+### **Múltiples Formas de Ejecutar FDA:**
+
+```bash
+# Todas estas formas inician FDA automation:
+make fda        # Comando original
+make start      # Intuitivo  
+make dev        # Desarrollo
+make run        # Estándar
+make go         # Súper rápido
+
+# Equivalente con python run.py:
+python run.py fda / start / dev / run / go
+```
+
+### **Comandos Cross-Platform:**
+
+**Makefile (macOS/Linux - MÁS RÁPIDO):**
+```bash
+make s          # Status instantáneo
+make l          # Ver logs
+make fda        # Ejecutar FDA
+```
+
+**Python run.py (Todas las plataformas):**
+```bash
+python run.py s      # Status
+python run.py l      # Ver logs  
+python run.py fda    # Ejecutar FDA
+```
+
+---
+
 ## 🚀 Comandos Principales
 
 ### 1. **Archivo Principal - FDA Automation**

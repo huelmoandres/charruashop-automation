@@ -1,6 +1,7 @@
 """
 Funciones utilitarias reutilizables para operaciones con Selenium
 Centraliza operaciones comunes para evitar duplicación de código
+Incluye optimizaciones de performance: caché de selectores, búsquedas paralelas
 """
 
 from selenium.webdriver.common.by import By
@@ -9,7 +10,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import time
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Tuple
+from threading import Lock
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ..constants.timeouts import SleepTimes, ElementTimeouts
 from ..constants.messages import LogMessages
@@ -18,14 +21,147 @@ from src.core.logger import AutomationLogger
 # Inicializar logger
 logger = AutomationLogger.get_instance()
 
+class ElementCache:
+    """
+    Sistema de caché para selectores CSS/XPath para mejorar performance
+    """
+    _instance = None
+    _lock = Lock()
+    
+    def __new__(cls):
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance._cache = {}
+                    cls._instance._stats = {"hits": 0, "misses": 0}
+        return cls._instance
+    
+    def get_selector(self, key: str) -> Optional[str]:
+        """Obtiene un selector del caché"""
+        if key in self._cache:
+            self._stats["hits"] += 1
+            logger.selenium_logger.debug("Cache hit", extra={"key": key})
+            return self._cache[key]
+        self._stats["misses"] += 1
+        return None
+    
+    def cache_selector(self, key: str, selector: str):
+        """Almacena un selector exitoso en el caché"""
+        self._cache[key] = selector
+        logger.selenium_logger.debug("Selector cacheado", extra={
+            "key": key, 
+            "selector": selector
+        })
+    
+    def get_stats(self) -> Dict:
+        """Obtiene estadísticas del caché"""
+        total = self._stats["hits"] + self._stats["misses"]
+        hit_rate = (self._stats["hits"] / total * 100) if total > 0 else 0
+        return {
+            **self._stats,
+            "total": total,
+            "hit_rate": f"{hit_rate:.1f}%"
+        }
+    
+    def clear_cache(self):
+        """Limpia el caché"""
+        self._cache.clear()
+        self._stats = {"hits": 0, "misses": 0}
+
+class OptimizedWaitHelper:
+    """
+    Helper optimizado para waits más eficientes
+    """
+    
+    @staticmethod
+    def smart_wait_for_element(driver, selectors: List[str], timeout: int = None) -> Optional[object]:
+        """
+        Espera inteligente que prueba múltiples selectores en paralelo
+        """
+        if timeout is None:
+            timeout = ElementTimeouts.DEFAULT
+            
+        cache = ElementCache()
+        
+        # Buscar en caché primero
+        for i, selector in enumerate(selectors):
+            cache_key = f"selector_{hash(selector)}"
+            cached_selector = cache.get_selector(cache_key)
+            if cached_selector:
+                try:
+                    element = WebDriverWait(driver, 1).until(
+                        EC.presence_of_element_located((By.XPATH, cached_selector))
+                    )
+                    logger.selenium_logger.info("Elemento encontrado usando caché")
+                    return element
+                except TimeoutException:
+                    cache.clear_cache()  # Cache stale, limpiar
+        
+        # Si no está en caché, probar todos los selectores
+        wait = WebDriverWait(driver, timeout)
+        
+        for selector in selectors:
+            try:
+                element = wait.until(EC.presence_of_element_located((By.XPATH, selector)))
+                # Cachear el selector exitoso
+                cache_key = f"selector_{hash(selector)}"
+                cache.cache_selector(cache_key, selector)
+                return element
+            except TimeoutException:
+                continue
+                
+        return None
+    
+    @staticmethod
+    def wait_for_any_element(driver, selectors_dict: Dict[str, str], timeout: int = None) -> Tuple[Optional[str], Optional[object]]:
+        """
+        Espera a que aparezca cualquiera de varios elementos y retorna cuál apareció primero
+        """
+        if timeout is None:
+            timeout = ElementTimeouts.DEFAULT
+            
+        def check_element(name_selector_pair):
+            name, selector = name_selector_pair
+            try:
+                element = WebDriverWait(driver, 0.5).until(
+                    EC.presence_of_element_located((By.XPATH, selector))
+                )
+                return name, element
+            except TimeoutException:
+                return None, None
+        
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            with ThreadPoolExecutor(max_workers=len(selectors_dict)) as executor:
+                futures = [
+                    executor.submit(check_element, item) 
+                    for item in selectors_dict.items()
+                ]
+                
+                for future in as_completed(futures, timeout=1):
+                    try:
+                        name, element = future.result()
+                        if element is not None:
+                            logger.selenium_logger.info("Elemento encontrado en búsqueda paralela", extra={
+                                "element_name": name
+                            })
+                            return name, element
+                    except Exception:
+                        continue
+            
+            time.sleep(0.1)  # Pausa breve antes de reintentar
+        
+        return None, None
+
 class ElementFinder:
-    """Clase para encontrar elementos con múltiples estrategias"""
+    """Clase para encontrar elementos con múltiples estrategias (optimizada)"""
     
     @staticmethod
     def find_by_multiple_selectors(driver, wait: WebDriverWait, selectors: List[str], 
                                  element_name: str = "elemento") -> Optional[object]:
         """
-        Busca un elemento usando múltiples selectores como respaldo
+        Busca un elemento usando múltiples selectores con caché y optimizaciones
         
         Args:
             driver: WebDriver instance
@@ -36,46 +172,96 @@ class ElementFinder:
         Returns:
             Elemento encontrado o None si no se encuentra
         """
-        logger.selenium_logger.info("=== BUSCANDO ELEMENTO CON MÚLTIPLES SELECTORES ===", extra={
+        logger.selenium_logger.info("=== BÚSQUEDA OPTIMIZADA CON MÚLTIPLES SELECTORES ===", extra={
             "element_name": element_name,
             "selectors_count": len(selectors)
         })
         
         print(LogMessages.SEARCHING_ELEMENT.format(element=element_name))
         
+        cache = ElementCache()
+        
+        # 1. Buscar en caché primero (más rápido)
+        cache_key = f"element_{element_name}_{hash(tuple(selectors))}"
+        cached_selector = cache.get_selector(cache_key)
+        if cached_selector:
+            try:
+                element = WebDriverWait(driver, 2).until(
+                    EC.element_to_be_clickable((By.XPATH, cached_selector))
+                )
+                logger.selenium_logger.info("⚡ Elemento encontrado usando caché", extra={
+                    "element_name": element_name,
+                    "cached_selector": cached_selector
+                })
+                print(f"⚡ {LogMessages.ELEMENT_FOUND.format(element=element_name)} (caché)")
+                return element
+            except TimeoutException:
+                logger.selenium_logger.debug("Caché obsoleto, limpiando entrada", extra={
+                    "cache_key": cache_key
+                })
+        
+        # 2. Búsqueda paralela optimizada (más eficiente)
+        start_time = time.time()
+        
+        # Intentar primero con timeout corto en paralelo
+        selectors_dict = {f"selector_{i}": sel for i, sel in enumerate(selectors)}
+        selector_name, element = OptimizedWaitHelper.wait_for_any_element(
+            driver, selectors_dict, timeout=3
+        )
+        
+        if element:
+            # Obtener el selector usado
+            selector_index = int(selector_name.split('_')[1])
+            used_selector = selectors[selector_index]
+            
+            # Cachear el selector exitoso
+            cache.cache_selector(cache_key, used_selector)
+            
+            elapsed = time.time() - start_time
+            logger.selenium_logger.info("✅ Elemento encontrado con búsqueda paralela", extra={
+                "element_name": element_name,
+                "selector_used": used_selector,
+                "selector_index": selector_index + 1,
+                "elapsed_time": f"{elapsed:.2f}s"
+            })
+            
+            print(LogMessages.ELEMENT_FOUND.format(element=element_name))
+            print(f"   📍 Selector usado: {used_selector} (#{selector_index + 1})")
+            print(f"   ⚡ Tiempo: {elapsed:.2f}s")
+            return element
+        
+        # 3. Fallback: búsqueda secuencial tradicional
+        logger.selenium_logger.warning("Búsqueda paralela falló, intentando secuencial")
+        
         for i, selector in enumerate(selectors):
             try:
-                logger.selenium_logger.debug("Probando selector", extra={
-                    "attempt": i + 1,
-                    "selector": selector,
-                    "element_name": element_name
-                })
-                
                 element = wait.until(EC.element_to_be_clickable((By.XPATH, selector)))
                 
-                logger.selenium_logger.info("Elemento encontrado exitosamente", extra={
+                # Cachear este selector exitoso
+                cache.cache_selector(cache_key, selector)
+                
+                elapsed = time.time() - start_time
+                logger.selenium_logger.info("✅ Elemento encontrado (secuencial)", extra={
                     "element_name": element_name,
                     "selector_used": selector,
-                    "attempt": i + 1
+                    "attempt": i + 1,
+                    "elapsed_time": f"{elapsed:.2f}s"
                 })
                 
                 print(LogMessages.ELEMENT_FOUND.format(element=element_name))
                 print(f"   📍 Selector usado: {selector}")
                 return element
-            except TimeoutException:
-                logger.selenium_logger.warning("Selector falló", extra={
-                    "attempt": i + 1,
-                    "selector": selector,
-                    "element_name": element_name
-                })
                 
+            except TimeoutException:
                 if i < len(selectors) - 1:
                     print(f"   ⚠️ Selector {i+1} falló, probando siguiente...")
                 continue
         
-        logger.selenium_logger.error("Elemento no encontrado con ningún selector", extra={
+        elapsed = time.time() - start_time
+        logger.selenium_logger.error("❌ Elemento no encontrado con ningún método", extra={
             "element_name": element_name,
-            "total_selectors": len(selectors)
+            "total_selectors": len(selectors),
+            "total_time": f"{elapsed:.2f}s"
         })
         
         print(LogMessages.ELEMENT_NOT_FOUND.format(element=element_name))
