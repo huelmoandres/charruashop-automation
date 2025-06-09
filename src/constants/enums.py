@@ -10,6 +10,7 @@ from typing import Dict, List, Optional
 class ProcessStep(Enum):
     """Pasos del proceso FDA"""
     LOGIN = "LOGIN"
+    NAVIGATION = "NAVIGATION"
     STEP_01_SELECTION = "STEP_01"
     STEP_02_EDIT_INFO = "STEP_02"
     STEP_03_FINAL_SAVE = "STEP_03"

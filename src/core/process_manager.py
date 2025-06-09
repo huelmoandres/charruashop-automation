@@ -224,6 +224,196 @@ class ProcessManager:
         print(f"⏸️ Pausa entre pasos...")
         time.sleep(SleepTimes.BETWEEN_STEPS)
     
+    def execute_navigation_to_prior_notice_system(self, driver: WebDriver) -> ProcessResult:
+        """
+        Ejecuta navegación específica al Prior Notice System Interface
+        Este paso es OBLIGATORIO después del login y antes de los steps
+        """
+        try:
+            self.logger.info("🏛️ Navegando al Prior Notice System Interface", module=SystemModule.FDA.value)
+            print(f"\n{ProcessMessages.STEP_INDICATOR.format(step='NAVIGATION', description='Prior Notice System Interface')}")
+            
+            # Importar aquí para evitar import circular
+            from selenium.webdriver.common.by import By
+            from selenium.webdriver.support import expected_conditions as EC
+            
+            # Crear wait para esta navegación
+            wait = WebDriverWait(driver, ElementTimeouts.DEFAULT)
+            
+            if self.performance_tracker:
+                with self.performance_tracker.track("navigate_to_prior_notice_system"):
+                    # Paso 1: Buscar enlace "Prior Notice System Interface"
+                    self.logger.info("🔍 Buscando enlace 'Prior Notice System Interface'", module=SystemModule.FDA.value)
+                    print("🔍 Buscando enlace 'Prior Notice System Interface'...")
+                    
+                    prior_notice_link = wait.until(
+                        EC.element_to_be_clickable((By.XPATH, "//a[@title='Prior Notice System Interface']"))
+                    )
+                    
+                    prior_notice_link.click()
+                    self.logger.info("✅ Navegando a Prior Notice System Interface", module=SystemModule.FDA.value)
+                    print("✅ Accediendo a Prior Notice System Interface")
+                    
+                    # Pausa para carga
+                    time.sleep(SleepTimes.FORM_LOAD)
+                    
+                    # Paso 2: Navegar a submissions
+                    self.logger.info("🔍 Buscando botón 'submissions'", module=SystemModule.FDA.value)
+                    print("🔍 Buscando botón 'submissions'...")
+                    
+                    submissions_button = wait.until(
+                        EC.element_to_be_clickable((By.XPATH, "//button[@routerlink='/submissions']"))
+                    )
+                    
+                    submissions_button.click()
+                    self.logger.info("✅ Navegando a Previous Submissions & Drafts", module=SystemModule.FDA.value)
+                    print("✅ Accediendo a Previous Submissions & Drafts")
+                    
+                    # Pausa para carga de tabla
+                    time.sleep(SleepTimes.FORM_LOAD)
+                    
+                    # Paso 3: Buscar y seleccionar prior notice en la tabla
+                    self.logger.info("🔍 Buscando tabla de prior notices", module=SystemModule.FDA.value)
+                    print("🔍 Buscando tabla de prior notices...")
+                    
+                    # Esperar a que aparezca la tabla
+                    from src.constants.selectors import FDASelectors
+                    table = wait.until(
+                        EC.presence_of_element_located((By.XPATH, FDASelectors.PRIOR_NOTICE_TABLE))
+                    )
+                    self.logger.info("✅ Tabla de prior notices encontrada", module=SystemModule.FDA.value)
+                    print("✅ Tabla encontrada")
+                    
+                    # Buscar filas de la tabla
+                    self.logger.info("🔍 Buscando filas en la tabla", module=SystemModule.FDA.value)
+                    print("🔍 Buscando prior notices disponibles...")
+                    
+                    table_rows = wait.until(
+                        EC.presence_of_all_elements_located((By.XPATH, FDASelectors.TABLE_ROWS))
+                    )
+                    
+                    if not table_rows:
+                        raise Exception("No se encontraron prior notices en la tabla")
+                    
+                    self.logger.info(f"✅ Encontradas {len(table_rows)} filas en la tabla", module=SystemModule.FDA.value)
+                    print(f"✅ Encontrados {len(table_rows)} prior notices")
+                    
+                    # Seleccionar el primer prior notice (el más reciente)
+                    first_row = table_rows[0]
+                    self.logger.info("🎯 Seleccionando el primer prior notice", module=SystemModule.FDA.value)
+                    print("🎯 Seleccionando el primer prior notice...")
+                    
+                    # Buscar botón "Copy" en la primera fila
+                    copy_button = first_row.find_element(By.XPATH, FDASelectors.COPY_BUTTON)
+                    
+                    if not copy_button:
+                        raise Exception("No se encontró el botón 'Copy' en el prior notice seleccionado")
+                    
+                    copy_button.click()
+                    self.logger.info("✅ Botón 'Copy' clickeado exitosamente", module=SystemModule.FDA.value)
+                    print("✅ Prior notice seleccionado para copiar")
+                    
+                    # Pausa para procesamiento
+                    time.sleep(SleepTimes.SAVE_PROCESSING)
+            else:
+                # Mismo proceso sin tracking
+                self.logger.info("🔍 Buscando enlace 'Prior Notice System Interface'", module=SystemModule.FDA.value)
+                print("🔍 Buscando enlace 'Prior Notice System Interface'...")
+                
+                prior_notice_link = wait.until(
+                    EC.element_to_be_clickable((By.XPATH, "//a[@title='Prior Notice System Interface']"))
+                )
+                
+                prior_notice_link.click()
+                self.logger.info("✅ Navegando a Prior Notice System Interface", module=SystemModule.FDA.value)
+                print("✅ Accediendo a Prior Notice System Interface")
+                
+                time.sleep(SleepTimes.FORM_LOAD)
+                
+                self.logger.info("🔍 Buscando botón 'submissions'", module=SystemModule.FDA.value)
+                print("🔍 Buscando botón 'submissions'...")
+                
+                submissions_button = wait.until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[@routerlink='/submissions']"))
+                )
+                
+                submissions_button.click()
+                self.logger.info("✅ Navegando a Previous Submissions & Drafts", module=SystemModule.FDA.value)
+                print("✅ Accediendo a Previous Submissions & Drafts")
+                
+                time.sleep(SleepTimes.FORM_LOAD)
+                
+                # Paso 3: Buscar y seleccionar prior notice en la tabla
+                self.logger.info("🔍 Buscando tabla de prior notices", module=SystemModule.FDA.value)
+                print("🔍 Buscando tabla de prior notices...")
+                
+                # Esperar a que aparezca la tabla
+                from src.constants.selectors import FDASelectors
+                table = wait.until(
+                    EC.presence_of_element_located((By.XPATH, FDASelectors.PRIOR_NOTICE_TABLE))
+                )
+                self.logger.info("✅ Tabla de prior notices encontrada", module=SystemModule.FDA.value)
+                print("✅ Tabla encontrada")
+                
+                # Buscar filas de la tabla
+                self.logger.info("🔍 Buscando filas en la tabla", module=SystemModule.FDA.value)
+                print("🔍 Buscando prior notices disponibles...")
+                
+                table_rows = wait.until(
+                    EC.presence_of_all_elements_located((By.XPATH, FDASelectors.TABLE_ROWS))
+                )
+                
+                if not table_rows:
+                    raise Exception("No se encontraron prior notices en la tabla")
+                
+                self.logger.info(f"✅ Encontradas {len(table_rows)} filas en la tabla", module=SystemModule.FDA.value)
+                print(f"✅ Encontrados {len(table_rows)} prior notices")
+                
+                # Seleccionar el primer prior notice (el más reciente)
+                first_row = table_rows[0]
+                self.logger.info("🎯 Seleccionando el primer prior notice", module=SystemModule.FDA.value)
+                print("🎯 Seleccionando el primer prior notice...")
+                
+                # Buscar botón "Copy" en la primera fila
+                copy_button = first_row.find_element(By.XPATH, FDASelectors.COPY_BUTTON)
+                
+                if not copy_button:
+                    raise Exception("No se encontró el botón 'Copy' en el prior notice seleccionado")
+                
+                copy_button.click()
+                self.logger.info("✅ Botón 'Copy' clickeado exitosamente", module=SystemModule.FDA.value)
+                print("✅ Prior notice seleccionado para copiar")
+                
+                # Pausa para procesamiento
+                time.sleep(SleepTimes.SAVE_PROCESSING)
+            
+            # Screenshot de confirmación
+            if self.screenshot_manager:
+                self.screenshot_manager.capture_step_screenshot(driver, "prior_notice_system_navigation")
+            
+            self.logger.info("🎯 Navegación y selección de prior notice completada", module=SystemModule.FDA.value)
+            print("🎯 Prior notice seleccionado - Listo para crear copia")
+            
+            return ProcessResult(
+                success=True,
+                step=ProcessStep.NAVIGATION,
+                message="Navegación y selección de prior notice exitosa"
+            )
+            
+        except Exception as e:
+            error_msg = f"Error navegando al Prior Notice System: {e}"
+            self.logger.error(error_msg, module=SystemModule.FDA.value, exception=e)
+            
+            if self.screenshot_manager:
+                self.screenshot_manager.capture_error_screenshot(driver, "prior_notice_navigation_error", e)
+            
+            return ProcessResult(
+                success=False,
+                step=ProcessStep.NAVIGATION,
+                message="Error en navegación al Prior Notice System",
+                error=error_msg
+            )
+    
     def execute_complete_prior_notice_process(self, driver: WebDriver) -> ProcessResult:
         """Ejecuta el proceso completo de Prior Notice con manejo estructurado"""
         try:
@@ -231,6 +421,15 @@ class ProcessManager:
             print(f"\n{ProcessMessages.STEP_INDICATOR.format(step='PRIOR_NOTICE', description='Automatización Prior Notice')}")
             print(f"💡 El proceso es mayormente automático")
             print(f"👤 Solo necesitarás ingresar la fecha cuando se solicite")
+            
+            # PASO 0: Navegación y selección de prior notice (NUEVO - OBLIGATORIO)
+            print("\n🏛️ Navegando al Prior Notice System y seleccionando prior notice...")
+            navigation_result = self.execute_navigation_to_prior_notice_system(driver)
+            
+            if not navigation_result.success:
+                return navigation_result
+            
+            print("✅ Prior notice seleccionado para copiar")
             
             # PASO 1: Copy Selection
             result_step1 = self.execute_step_with_tracking(
@@ -300,6 +499,7 @@ class ProcessManager:
         print(f"\n🎉 {LogMessages.PROCESS_COMPLETED.format(process='CREACIÓN DE PRIOR NOTICE')}")
         print(ProcessMessages.SUCCESS_SUMMARY)
         print("📊 Resumen de lo ejecutado:")
+        print("   ✅ Navegación: Prior notice seleccionado de la tabla")
         print("   ✅ Paso 1: Copy Selection completado")
         print("   ✅ Paso 2: Edit Information completado")
         print("   ✅ Paso 3: Final Save completado")
