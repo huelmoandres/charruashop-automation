@@ -48,6 +48,7 @@ La documentación completa está organizada en la carpeta `docs/`:
 - **[🚀 SCRIPTS_GUIDE](docs/SCRIPTS_GUIDE.md)** - Sistema de scripts Makefile + run.py
 - **[📊 ENHANCED_LOGGING](docs/ENHANCED_LOGGING.md)** - Sistema completo de logging
 - **[📖 COMMANDS_GUIDE](docs/COMMANDS_GUIDE.md)** - Guía detallada de comandos
+- **[⚡ PERFORMANCE_OPTIMIZATIONS](docs/PERFORMANCE_OPTIMIZATIONS.md)** - Optimizaciones de performance avanzadas
 - **[🔒 GITIGNORE_UPDATES](docs/GITIGNORE_UPDATES.md)** - Actualizaciones del .gitignore
 
 ## 🛠️ Instalación Rápida
@@ -75,6 +76,7 @@ make health-check
 - 🚀 **Comandos Simplificados** - Sistema tipo `npm run`
 - 📸 **Screenshots Automáticos** - Captura en errores
 - 🔧 **Herramientas de Mantenimiento** - Backup, limpieza, health check
+- ⚡ **Optimizaciones de Performance** - Caché de selectores, búsqueda paralela, timeouts adaptativos
 
 ## 🎯 Estado del Proyecto
 
@@ -84,6 +86,7 @@ make health-check
 ✅ **Datos centralizados** en carpeta `data/`  
 ✅ **Documentación completa** en carpeta `docs/`  
 ✅ **Cross-platform** compatible (Makefile + Python)  
+✅ **Performance optimizado** con caché inteligente y timeouts adaptativos  
 
 ---
 
