@@ -1,5 +1,7 @@
 # 🚀 Makefile para FDA/Shopify Automation
 # Uso: make <comando>
+# 
+# Desarrollado por: Andrés Huelmo & Christian Huelmo
 
 .PHONY: help install fda fda-full fda-test shopify-export orders-convert orders-update-guia orders-analyze logs-fda logs-errors logs-performance logs-tail clean-logs backup health-check
 

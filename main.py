@@ -3,6 +3,8 @@
 Sistema FDA Automation - Script Principal
 Automatiza el proceso completo de login FDA y creación de Prior Notice
 
+Desarrollado por: Andrés Huelmo & Christian Huelmo
+
 Sistema migrado con:
 - Gestión automática de browser (SeleniumManager)
 - Sistema de logging avanzado con performance tracking

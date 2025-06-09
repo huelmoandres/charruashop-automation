@@ -1,5 +1,7 @@
 # 🚀 Sistema de Automatización FDA y Shopify
 
+> **Desarrollado por:** Andrés Huelmo & Christian Huelmo
+
 Sistema completo de automatización para gestión de **Prior Notices de FDA** y exportación de **pedidos de Shopify**, desarrollado con Selenium y Python.
 
 ## ⚡ Inicio Rápido

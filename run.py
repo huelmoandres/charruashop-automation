@@ -3,6 +3,8 @@
 🚀 Script runner para FDA/Shopify Automation
 Uso: python run.py <comando>
 Similar a 'npm run' en Node.js
+
+Desarrollado por: Andrés Huelmo & Christian Huelmo
 """
 
 import sys
