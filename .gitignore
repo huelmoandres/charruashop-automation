@@ -29,7 +29,8 @@ MANIFEST
 # ================================
 # 🔒 Configuración Sensible 
 # ================================
-config/config.py          # Credenciales FDA y Shopify
+config/config.py
+config/secrets.py
 *.env
 .env.*
 secrets.py
