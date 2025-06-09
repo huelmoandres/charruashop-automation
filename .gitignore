@@ -1,0 +1,289 @@
+# 🚀 Selenium FDA/Shopify Automation - .gitignore
+
+# ================================
+# 🐍 Python
+# ================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ================================
+# 🔒 Configuración Sensible 
+# ================================
+config/config.py          # Credenciales FDA y Shopify
+*.env
+.env.*
+secrets.py
+credentials.json
+keys/
+tokens/
+
+# ================================
+# 📊 Datos de Usuario
+# ================================
+# CSV de entrada (usuario debe crear)
+orders_export.csv
+
+# Datos generados
+csv_data/
+results/
+screenshots/
+output/
+exports/
+backups/
+
+# Archivos CSV específicos
+src/orders/output/
+src/orders/fda/
+
+# ================================
+# 🤖 Selenium y Navegadores
+# ================================
+# Toda la carpeta de drivers (descargar separadamente)
+drivers/
+
+# ChromeDriver específicos (por si acaso)
+chromedriver*
+geckodriver*
+*.exe
+
+# Perfiles de navegador
+chrome-profile/
+firefox-profile/
+selenium-profile/
+
+# Screenshots automáticos
+*.png
+*.jpg
+*.jpeg
+capturas/
+
+# ================================
+# 📝 Logs y Temporales
+# ================================
+logs/
+*.log
+*.log.*
+temp/
+tmp/
+.tmp/
+
+# Archivos de debug
+debug/
+debug_*.html
+page_source_*.html
+
+# ================================
+# 💻 Sistema Operativo
+# ================================
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+desktop.ini
+*.lnk
+
+# Linux
+*~
+.nfs*
+
+# ================================
+# 🛠️ IDEs y Editores
+# ================================
+# VSCode
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+
+# Sublime Text
+*.sublime-*
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ================================
+# 📦 Dependencias
+# ================================
+# Virtual environments (completas)
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+.env/
+
+# Python virtual environments
+pyvenv.cfg
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# conda
+.conda/
+
+# ================================
+# 🧪 Testing y Coverage
+# ================================
+.coverage
+.pytest_cache/
+.tox/
+.nox/
+htmlcov/
+.coverage.*
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# ================================
+# 📋 Documentación
+# ================================
+# Sphinx documentation
+docs/_build/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# ================================
+# 🔄 Git y Versionado
+# ================================
+*.orig
+*.rej
+
+# ================================
+# 🎯 Específico del Proyecto
+# ================================
+# Archivos de respaldo
+*.bak
+*.backup
+*_backup.*
+backup_*/
+
+# Archivos de configuración personal
+personal_config.py
+local_settings.py
+user_preferences.py
+
+# Archivos de prueba temporal
+test_*.csv
+sample_*.csv
+example_*.csv
+
+# Reportes generados
+reports/
+*.report
+*.summary
+
+# Cache de Selenium
+.selenium_cache/
+selenium_screenshots/
+
+# ================================
+# 📱 Específico Shopify
+# ================================
+# Tokens y API keys específicos
+shopify_*.token
+shopify_config_*.py
+
+# ================================
+# 🏛️ Específico FDA
+# ================================
+# Archivos de sesión FDA
+fda_session_*
+fda_cookies_*
+
+# ================================
+# 🎨 Archivos Multimedia
+# ================================
+*.mp4
+*.avi
+*.mov
+*.gif
+
+# ================================
+# 📤 Archivos de Salida Específicos
+# ================================
+# CSVs generados automáticamente
+generated_*.csv
+auto_*.csv
+export_*.csv
+
+# PDFs generados
+generated_*.pdf
+report_*.pdf
+
+# ================================
+# 🔍 Archivos de Debug Específicos
+# ================================
+selenium_debug/
+browser_logs/
+network_logs/
+console_logs/
+
+# ================================
+# ⚡ Performance y Cache
+# ================================
+.cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ================================
+# 📋 Notas del Desarrollador
+# ================================
+TODO.md
+NOTES.md
+DEV_NOTES.md
+*.notes
+
+# ================================
+# 🚀 Archivos de Deploy
+# ================================
+.deploy/
+deploy_config.* 
