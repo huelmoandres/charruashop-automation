@@ -59,7 +59,7 @@ def setup_environment():
         logger.warning(f"Archivo CSV no encontrado: {ORDER_SAMPLE_FILE}", module='main')
         print(f"\n⚠️ ARCHIVO CSV NO ENCONTRADO")
         print(f"📁 Se esperaba: {ORDER_SAMPLE_FILE}")
-        print(f"💡 Puedes ejecutar 'python3 configure_paths.py' para configurar rutas")
+        print(f"💡 El archivo order_sample.csv debe estar en data/samples/")
         print(f"📋 El archivo debe contener: guia_aerea, order_number, shipping_name")
         
         user_continue = input(f"\n{UserMessages.CONTINUE_WITHOUT_CSV}").strip().lower()
@@ -268,8 +268,8 @@ def main():
                 print(f"\n🎯 {ProcessMessages.FINAL_SUCCESS}")
                 print("📸 Se pueden tomar screenshots finales...")
                 print("📁 Archivos generados en:")
-                print(f"   • CSV: {CSVPaths.CSV_BASE_DIR}")
-                print(f"   • Outputs: {CSVPaths.EXPORTS_DIR}")
+                print(f"   • Data: data/")
+                print(f"   • Outputs: src/orders/output/")
                 print(f"   • Logs: logs/")
                 print(f"   • Screenshots: logs/screenshots/")
                 
@@ -297,7 +297,7 @@ def main():
         logger.critical(f"❌ Error crítico en el sistema: {e}", module='main', exception=e)
         print(f"\n❌ Error crítico en el sistema: {e}")
         print("🆘 Revisa la configuración del sistema")
-        print(f"💡 Puedes ejecutar 'python3 configure_paths.py' para reconfigurar")
+        print(f"💡 Revisa la configuración en config/secrets.py")
         print("📄 Logs detallados en: logs/")
         
         # Screenshot de error crítico si hay driver disponible
@@ -317,7 +317,6 @@ def main():
         print("💡 Tips para próxima ejecución:")
         print("   • Asegúrate de tener order.csv actualizado")
         print("   • Verifica que FDA no haya cambiado su interfaz")
-        print("   • Usa 'python3 configure_paths.py' para cambiar carpetas")
         print("   • Revisa logs/ para análisis detallado")
         print("   • Screenshots en logs/screenshots/ para debugging visual")
 
