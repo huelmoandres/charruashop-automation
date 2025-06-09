@@ -1,0 +1,20 @@
+# ARCHIVO DE PLANTILLA PARA CONFIGURACIÓN
+# Copia este archivo como config.py y será configurado automáticamente
+
+# Configuración para el login de FDA
+FDA_LOGIN_URL = "https://www.access.fda.gov/oaa/logonFlow.htm?execution=e1s1"
+
+# Importar credenciales desde archivo seguro
+try:
+    from .secrets import FDA_CONFIG
+    USERNAME = FDA_CONFIG["USERNAME"]
+    PASSWORD = FDA_CONFIG["PASSWORD"]
+except ImportError:
+    print("❌ Error: No se pudo importar config/secrets.py")
+    print("💡 Copia config/secrets.py.template como config/secrets.py y configura tus credenciales")
+    USERNAME = ""
+    PASSWORD = ""
+
+# Configuración de ChromeDriver
+CHROMEDRIVER_PATH = "./drivers/chromedriver"
+WAIT_TIMEOUT = 10 
