@@ -8,6 +8,10 @@ import os
 import glob
 import re
 from datetime import datetime
+from src.core.logger import AutomationLogger
+
+# Inicializar logger
+logger = AutomationLogger.get_instance()
 
 # Configuración
 OUTPUT_DIR = "src/orders/output"
@@ -17,31 +21,52 @@ def find_csv_files_by_order(order_number):
     Busca archivos CSV en la carpeta output que correspondan a un número de pedido
     Los archivos tienen formato: order_1001_20231215_143022.csv
     """
+    logger.shopify_logger.info("=== BUSCANDO ARCHIVOS CSV POR NÚMERO DE PEDIDO ===", extra={"order_number": order_number})
+    
     # Limpiar el número de pedido (quitar # si existe)
     clean_number = str(order_number).replace("#", "").strip()
     
     if not os.path.exists(OUTPUT_DIR):
-        print(f"❌ Carpeta no encontrada: {OUTPUT_DIR}")
+        logger.shopify_logger.error("Carpeta output no encontrada", extra={"directory": OUTPUT_DIR})
         return []
     
     # Buscar archivos que contengan el número de pedido en el nombre
     pattern = os.path.join(OUTPUT_DIR, f"order_{clean_number}_*.csv")
     matching_files = glob.glob(pattern)
     
-    print(f"🔍 Buscando archivos para pedido #{clean_number}...")
-    print(f"📂 Patrón de búsqueda: order_{clean_number}_*.csv")
+    logger.shopify_logger.info("Ejecutando búsqueda de archivos", extra={
+        "clean_number": clean_number,
+        "search_pattern": f"order_{clean_number}_*.csv",
+        "search_directory": OUTPUT_DIR
+    })
     
     if matching_files:
-        print(f"✅ Se encontraron {len(matching_files)} archivo(s):")
+        logger.shopify_logger.info("Archivos CSV encontrados", extra={
+            "files_count": len(matching_files),
+            "order_number": clean_number
+        })
+        
         for i, filepath in enumerate(matching_files, 1):
             filename = os.path.basename(filepath)
             file_size = os.path.getsize(filepath)
             modified_time = datetime.fromtimestamp(os.path.getmtime(filepath))
+            
+            logger.shopify_logger.debug("Archivo encontrado", extra={
+                "index": i,
+                "filename": filename,
+                "file_size_bytes": file_size,
+                "modified_time": modified_time.strftime('%Y-%m-%d %H:%M:%S')
+            })
+            
             print(f"  {i}. {filename}")
             print(f"     📊 Tamaño: {file_size:,} bytes")
             print(f"     🕐 Modificado: {modified_time.strftime('%Y-%m-%d %H:%M:%S')}")
             print()
     else:
+        logger.shopify_logger.warning("No se encontraron archivos CSV", extra={
+            "order_number": clean_number,
+            "search_directory": OUTPUT_DIR
+        })
         print(f"❌ No se encontraron archivos para el pedido #{clean_number}")
         print(f"💡 Asegúrate de que existen archivos CSV en {OUTPUT_DIR}")
     
@@ -51,45 +76,67 @@ def analyze_csv_guia_aerea(csv_file):
     """
     Analiza el contenido actual de la columna guia_aerea en un CSV
     """
+    logger.shopify_logger.info("=== ANALIZANDO CONTENIDO CSV ===", extra={"csv_file": csv_file})
+    
     try:
         with open(csv_file, 'r', encoding='utf-8') as file:
             reader = csv.DictReader(file)
             rows = list(reader)
             
             if not rows:
-                print(f"⚠️ El archivo {csv_file} está vacío")
+                logger.shopify_logger.warning("Archivo CSV está vacío", extra={"csv_file": csv_file})
                 return None
-            
-            print(f"📋 Análisis de: {os.path.basename(csv_file)}")
-            print("-" * 50)
-            print(f"📦 Total de productos: {len(rows)}")
             
             # Información del pedido
             first_row = rows[0]
-            print(f"🆔 Número de pedido: {first_row.get('order_number')}")
-            print(f"👤 Cliente: {first_row.get('shipping_name')}")
+            order_info = {
+                "order_number": first_row.get('order_number'),
+                "shipping_name": first_row.get('shipping_name'),
+                "total_products": len(rows)
+            }
+            
+            logger.shopify_logger.info("Información del pedido extraída", extra=order_info)
             
             # Análisis de valores actuales de guia_aerea
             guia_values = [row.get('guia_aerea', '') for row in rows]
             unique_values = list(set(guia_values))
             
-            print(f"\n📋 Valores actuales de 'guia_aerea':")
+            guia_analysis = {}
             for value in unique_values:
                 count = guia_values.count(value)
-                print(f"   • '{value}': {count} producto(s)")
+                guia_analysis[value] = count
             
-            # Mostrar productos individuales
-            print(f"\n📦 Detalle por producto:")
+            logger.shopify_logger.info("Análisis de valores guía aérea", extra={
+                "unique_values": guia_analysis,
+                "total_products": len(rows)
+            })
+            
+            # Log detallado de productos
             for i, row in enumerate(rows, 1):
-                name = row.get('line_item_name', 'Sin nombre')[:40]
-                quantity = row.get('line_item_quantity', '1')
-                current_guia = row.get('guia_aerea', '')
-                print(f"   {i:2d}. {quantity}x {name}... -> Guía: '{current_guia}'")
+                product_info = {
+                    "index": i,
+                    "name": row.get('line_item_name', 'Sin nombre')[:40],
+                    "quantity": row.get('line_item_quantity', '1'),
+                    "current_guia": row.get('guia_aerea', '')
+                }
+                logger.shopify_logger.debug("Producto analizado", extra=product_info)
+                
+                print(f"   {i:2d}. {product_info['quantity']}x {product_info['name']}... -> Guía: '{product_info['current_guia']}'")
             
+            logger.shopify_logger.info("Análisis CSV completado exitosamente")
             return rows
             
     except Exception as e:
-        print(f"❌ Error analizando {csv_file}: {e}")
+        logger.shopify_logger.error("Error analizando archivo CSV", extra={
+            "csv_file": csv_file,
+            "error": str(e)
+        })
+        logger.error_logger.error("CSV analysis failed", extra={
+            "source_module": "orders_update_guia_aerea",
+            "function": "analyze_csv_guia_aerea",
+            "csv_file": csv_file,
+            "error": str(e)
+        })
         return None
 
 def update_guia_aerea_in_csv(csv_file, new_guia_value, specific_products=None):
@@ -101,6 +148,12 @@ def update_guia_aerea_in_csv(csv_file, new_guia_value, specific_products=None):
         new_guia_value: Nuevo valor para guia_aerea
         specific_products: Lista de índices de productos a actualizar (None = todos)
     """
+    logger.shopify_logger.info("=== ACTUALIZANDO GUÍA AÉREA EN CSV ===", extra={
+        "csv_file": csv_file,
+        "new_guia_value": new_guia_value,
+        "specific_products": specific_products
+    })
+    
     try:
         # Leer archivo original
         with open(csv_file, 'r', encoding='utf-8') as file:
@@ -109,8 +162,13 @@ def update_guia_aerea_in_csv(csv_file, new_guia_value, specific_products=None):
             fieldnames = reader.fieldnames
         
         if not rows:
-            print(f"⚠️ El archivo está vacío")
+            logger.shopify_logger.warning("Archivo CSV está vacío, no se puede actualizar")
             return False
+        
+        logger.shopify_logger.debug("Archivo CSV leído exitosamente", extra={
+            "rows_count": len(rows),
+            "fieldnames": list(fieldnames) if fieldnames else []
+        })
         
         # Actualizar valores
         updated_count = 0
@@ -120,12 +178,17 @@ def update_guia_aerea_in_csv(csv_file, new_guia_value, specific_products=None):
             for row in rows:
                 row['guia_aerea'] = new_guia_value
                 updated_count += 1
+            logger.shopify_logger.info("Actualizando todos los productos", extra={"updated_count": updated_count})
         else:
             # Actualizar solo productos específicos
             for index in specific_products:
                 if 0 <= index < len(rows):
                     rows[index]['guia_aerea'] = new_guia_value
                     updated_count += 1
+            logger.shopify_logger.info("Actualizando productos específicos", extra={
+                "specific_products": specific_products,
+                "updated_count": updated_count
+            })
         
         # Escribir archivo actualizado
         with open(csv_file, 'w', newline='', encoding='utf-8') as file:
@@ -133,19 +196,37 @@ def update_guia_aerea_in_csv(csv_file, new_guia_value, specific_products=None):
             writer.writeheader()
             writer.writerows(rows)
         
+        logger.shopify_logger.info("=== ACTUALIZACIÓN CSV COMPLETADA EXITOSAMENTE ===", extra={
+            "csv_file": csv_file,
+            "updated_count": updated_count,
+            "new_guia_value": new_guia_value
+        })
+        
         print(f"✅ Archivo actualizado exitosamente")
         print(f"📊 {updated_count} producto(s) actualizados con guía aérea: '{new_guia_value}'")
         
         return True
         
     except Exception as e:
-        print(f"❌ Error actualizando archivo: {e}")
+        logger.shopify_logger.error("Error actualizando archivo CSV", extra={
+            "csv_file": csv_file,
+            "new_guia_value": new_guia_value,
+            "error": str(e)
+        })
+        logger.error_logger.error("CSV update failed", extra={
+            "source_module": "orders_update_guia_aerea",
+            "function": "update_guia_aerea_in_csv",
+            "csv_file": csv_file,
+            "error": str(e)
+        })
         return False
 
 def interactive_update():
     """
     Función interactiva principal para actualizar guía aérea
     """
+    logger.shopify_logger.info("=== INICIANDO ACTUALIZADOR INTERACTIVO DE GUÍA AÉREA ===")
+    
     print("🛠️ ACTUALIZADOR DE GUÍA AÉREA")
     print("=" * 50)
     
@@ -154,6 +235,7 @@ def interactive_update():
         order_input = input("Número de pedido: ").strip()
         
         if order_input.lower() in ['x', 'exit', 'quit', '']:
+            logger.shopify_logger.info("Usuario salió del actualizador interactivo")
             print("👋 ¡Hasta luego!")
             break
         

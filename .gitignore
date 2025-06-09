@@ -41,8 +41,8 @@ tokens/
 # ================================
 # 📊 Datos de Usuario
 # ================================
-# CSV de entrada (usuario debe crear)
-orders_export.csv
+# CSV de entrada (usuario debe crear) - ahora en data/
+data/orders_export.csv
 
 # Datos generados
 csv_data/
@@ -55,6 +55,11 @@ backups/
 # Archivos CSV específicos
 src/orders/output/
 src/orders/fda/
+
+# Nueva estructura de datos centralizada
+data/
+!data/samples/
+!data/samples/order_sample.csv
 
 # ================================
 # 🤖 Selenium y Navegadores
@@ -81,7 +86,17 @@ capturas/
 # ================================
 # 📝 Logs y Temporales
 # ================================
+# Sistema de logs organizado por categorías
 logs/
+logs/sessions/
+logs/fda/
+logs/shopify/
+logs/selenium/
+logs/performance/
+logs/errors/
+logs/screenshots/
+
+# Logs generales
 *.log
 *.log.*
 temp/
@@ -287,4 +302,38 @@ DEV_NOTES.md
 # 🚀 Archivos de Deploy
 # ================================
 .deploy/
-deploy_config.* 
+deploy_config.*
+
+# ================================
+# 🆕 Nuevos Archivos del Sistema
+# ================================
+# Scripts de sistema (mantener en git)
+# Makefile - MANTENER
+# run.py - MANTENER
+# scripts/ - MANTENER
+# SCRIPTS_GUIDE.md - MANTENER
+
+# Archivos generados por scripts
+backups/
+backup_*/
+backup_data_*/
+
+# Archivos temporales de scripts
+*.tmp
+*.temp
+script_output_*
+maintenance_*
+
+# Requirements lock files (opcionales)
+# requirements.txt - MANTENER para compatibilidad
+
+# ================================
+# 🔧 Sistema de Comandos
+# ================================
+# Outputs de make/run.py
+command_output_*
+script_log_*
+
+# Archivos de caché de comandos
+.command_cache/
+.make_cache/ 

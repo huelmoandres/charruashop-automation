@@ -13,6 +13,10 @@ from typing import List, Optional, Union
 
 from ..constants.timeouts import SleepTimes, ElementTimeouts
 from ..constants.messages import LogMessages
+from src.core.logger import AutomationLogger
+
+# Inicializar logger
+logger = AutomationLogger.get_instance()
 
 class ElementFinder:
     """Clase para encontrar elementos con múltiples estrategias"""
@@ -32,18 +36,47 @@ class ElementFinder:
         Returns:
             Elemento encontrado o None si no se encuentra
         """
+        logger.selenium_logger.info("=== BUSCANDO ELEMENTO CON MÚLTIPLES SELECTORES ===", extra={
+            "element_name": element_name,
+            "selectors_count": len(selectors)
+        })
+        
         print(LogMessages.SEARCHING_ELEMENT.format(element=element_name))
         
         for i, selector in enumerate(selectors):
             try:
+                logger.selenium_logger.debug("Probando selector", extra={
+                    "attempt": i + 1,
+                    "selector": selector,
+                    "element_name": element_name
+                })
+                
                 element = wait.until(EC.element_to_be_clickable((By.XPATH, selector)))
+                
+                logger.selenium_logger.info("Elemento encontrado exitosamente", extra={
+                    "element_name": element_name,
+                    "selector_used": selector,
+                    "attempt": i + 1
+                })
+                
                 print(LogMessages.ELEMENT_FOUND.format(element=element_name))
                 print(f"   📍 Selector usado: {selector}")
                 return element
             except TimeoutException:
+                logger.selenium_logger.warning("Selector falló", extra={
+                    "attempt": i + 1,
+                    "selector": selector,
+                    "element_name": element_name
+                })
+                
                 if i < len(selectors) - 1:
                     print(f"   ⚠️ Selector {i+1} falló, probando siguiente...")
                 continue
+        
+        logger.selenium_logger.error("Elemento no encontrado con ningún selector", extra={
+            "element_name": element_name,
+            "total_selectors": len(selectors)
+        })
         
         print(LogMessages.ELEMENT_NOT_FOUND.format(element=element_name))
         return None
@@ -61,10 +94,26 @@ class ElementFinder:
         Returns:
             Botón encontrado o None
         """
+        logger.selenium_logger.debug("Buscando botón por texto", extra={
+            "text": text,
+            "partial_match": partial_match
+        })
+        
         try:
             selector = f"//button[contains(text(), '{text}')]" if partial_match else f"//button[text()='{text}']"
-            return driver.find_element(By.XPATH, selector)
+            button = driver.find_element(By.XPATH, selector)
+            
+            logger.selenium_logger.info("Botón encontrado por texto", extra={
+                "text": text,
+                "selector": selector
+            })
+            
+            return button
         except NoSuchElementException:
+            logger.selenium_logger.warning("Botón no encontrado por texto", extra={
+                "text": text,
+                "partial_match": partial_match
+            })
             return None
 
 class ClickHelper:
@@ -83,24 +132,56 @@ class ClickHelper:
         Returns:
             True si el clic fue exitoso, False si falló
         """
+        logger.selenium_logger.info("=== EJECUTANDO CLIC SEGURO ===", extra={
+            "element_name": element_name
+        })
+        
         print(LogMessages.CLICKING_ELEMENT.format(element=element_name))
         
         # Estrategia 1: Scroll y clic normal
         try:
+            logger.selenium_logger.debug("Intentando clic normal con scroll", extra={
+                "element_name": element_name
+            })
+            
             driver.execute_script("arguments[0].scrollIntoView(true);", element)
             time.sleep(SleepTimes.SCROLL)
             element.click()
+            
+            logger.selenium_logger.info("Clic normal exitoso", extra={
+                "element_name": element_name,
+                "method": "normal_click"
+            })
+            
             print(LogMessages.CLICK_SUCCESS.format(element=element_name))
             return True
         except Exception as e:
+            logger.selenium_logger.warning("Clic normal falló", extra={
+                "element_name": element_name,
+                "error": str(e)
+            })
             print(f"   ⚠️ Clic normal falló: {e}")
         
         # Estrategia 2: JavaScript click
         try:
+            logger.selenium_logger.debug("Intentando clic con JavaScript", extra={
+                "element_name": element_name
+            })
+            
             driver.execute_script("arguments[0].click();", element)
+            
+            logger.selenium_logger.info("Clic JavaScript exitoso", extra={
+                "element_name": element_name,
+                "method": "javascript_click"
+            })
+            
             print(LogMessages.CLICK_SUCCESS.format(element=element_name) + " (JavaScript)")
             return True
         except Exception as e:
+            logger.selenium_logger.error("Todas las estrategias de clic fallaron", extra={
+                "element_name": element_name,
+                "error": str(e)
+            })
             print(LogMessages.CLICK_FAILED.format(element=element_name))
             return False
 
@@ -109,6 +190,8 @@ class ClickHelper:
         """
         Scroll inteligente hacia abajo para cargar elementos lazy loading
         """
+        logger.selenium_logger.debug("Ejecutando scroll inteligente")
+        
         try:
             # Scroll gradual para cargar elementos lazy
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight / 2);")
@@ -116,9 +199,11 @@ class ClickHelper:
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(0.5)
             
+            logger.selenium_logger.info("Scroll inteligente completado exitosamente")
             print("📜 Scroll inteligente completado")
             return True
         except Exception as e:
+            logger.selenium_logger.error("Error en scroll inteligente", extra={"error": str(e)})
             print(f"⚠️ Error en scroll inteligente: {e}")
             return False
     
@@ -127,6 +212,10 @@ class ClickHelper:
         """
         Hace clic seguro con scroll automático al elemento
         """
+        logger.selenium_logger.info("Ejecutando clic seguro con scroll", extra={
+            "element_name": element_name
+        })
+        
         try:
             # Scroll al elemento
             driver.execute_script("arguments[0].scrollIntoView(true);", element)
@@ -135,15 +224,27 @@ class ClickHelper:
             # Intentar clic normal
             try:
                 element.click()
+                logger.selenium_logger.info("Clic seguro exitoso", extra={
+                    "element_name": element_name,
+                    "method": "normal_click"
+                })
                 print(f"✅ {element_name} clickeado exitosamente")
                 return True
             except:
                 # Fallback con JavaScript
                 driver.execute_script("arguments[0].click();", element)
+                logger.selenium_logger.info("Clic seguro exitoso con JavaScript", extra={
+                    "element_name": element_name,
+                    "method": "javascript_click"
+                })
                 print(f"✅ {element_name} clickeado con JavaScript")
                 return True
                 
         except Exception as e:
+            logger.selenium_logger.error("Error en clic seguro con scroll", extra={
+                "element_name": element_name,
+                "error": str(e)
+            })
             print(f"❌ Error haciendo clic en {element_name}: {e}")
             return False
 
@@ -163,8 +264,17 @@ class InputHelper:
         Returns:
             True si se limpió exitosamente, False si falló
         """
+        logger.selenium_logger.info("=== LIMPIANDO CAMPO INPUT ===", extra={
+            "max_attempts": max_attempts
+        })
+        
         for attempt in range(max_attempts):
             try:
+                logger.selenium_logger.debug("Intento de limpieza", extra={
+                    "attempt": attempt + 1,
+                    "max_attempts": max_attempts
+                })
+                
                 print(f"🧹 Intento {attempt + 1} de limpieza del campo...")
                 
                 # Método 1: Clear básico
@@ -192,15 +302,27 @@ class InputHelper:
                 # Verificar si está limpio
                 current_value = input_element.get_attribute('value') or ''
                 if not current_value or len(current_value.strip()) == 0:
+                    logger.selenium_logger.info("Campo limpiado exitosamente", extra={
+                        "attempt": attempt + 1
+                    })
                     print(f"✅ Campo limpiado exitosamente en intento {attempt + 1}")
                     return True
                 else:
+                    logger.selenium_logger.warning("Limpieza parcial", extra={
+                        "attempt": attempt + 1,
+                        "remaining_value": current_value
+                    })
                     print(f"⚠️ Intento {attempt + 1} parcial. Valor restante: '{current_value}'")
                     
             except Exception as e:
-                print(f"❌ Error en intento {attempt + 1}: {e}")
+                logger.selenium_logger.error("Error en intento de limpieza", extra={
+                    "attempt": attempt + 1,
+                    "error": str(e)
+                })
         
-        print(f"⚠️ No se pudo limpiar completamente después de {max_attempts} intentos")
+        logger.selenium_logger.error("No se pudo limpiar el campo después de todos los intentos", extra={
+            "max_attempts": max_attempts
+        })
         return False
 
     @staticmethod
@@ -218,10 +340,18 @@ class InputHelper:
         Returns:
             True si se llenó correctamente, False si falló
         """
+        logger.selenium_logger.info("=== LLENANDO CAMPO CON VALIDACIÓN ===", extra={
+            "element_name": element_name,
+            "value_length": len(value)
+        })
+        
         print(LogMessages.UPDATING_FIELD.format(field=element_name))
         
         # Limpiar primero
         if not InputHelper.clear_input_field(driver, input_element):
+            logger.selenium_logger.warning("No se pudo limpiar campo completamente", extra={
+                "element_name": element_name
+            })
             print(f"⚠️ No se pudo limpiar {element_name} completamente")
         
         # Escribir valor
@@ -231,9 +361,19 @@ class InputHelper:
         # Validar
         current_value = input_element.get_attribute('value')
         if value in current_value:
+            logger.selenium_logger.info("Campo llenado y validado exitosamente", extra={
+                "element_name": element_name,
+                "expected_value": value,
+                "current_value": current_value
+            })
             print(LogMessages.FIELD_UPDATED.format(field=element_name, value=value))
             return True
         else:
+            logger.selenium_logger.error("Validación de campo falló", extra={
+                "element_name": element_name,
+                "expected_value": value,
+                "current_value": current_value
+            })
             print(f"⚠️ Valor esperado: '{value}', valor actual: '{current_value}'")
             return False
 
@@ -249,8 +389,14 @@ class WaitHelper:
             driver: WebDriver instance
             timeout: Timeout en segundos
         """
+        logger.selenium_logger.debug("Esperando carga completa de página", extra={
+            "timeout": timeout
+        })
+        
         wait = WebDriverWait(driver, timeout)
         wait.until(lambda driver: driver.execute_script("return document.readyState") == "complete")
+        
+        logger.selenium_logger.info("Página cargada completamente")
 
     @staticmethod
     def wait_for_element_to_disappear(driver, selector: str, timeout: int = ElementTimeouts.DEFAULT):
@@ -262,11 +408,24 @@ class WaitHelper:
             selector: Selector del elemento
             timeout: Timeout en segundos
         """
+        logger.selenium_logger.debug("Esperando que elemento desaparezca", extra={
+            "selector": selector,
+            "timeout": timeout
+        })
+        
         try:
             wait = WebDriverWait(driver, timeout)
             wait.until_not(EC.presence_of_element_located((By.XPATH, selector)))
+            
+            logger.selenium_logger.info("Elemento desapareció exitosamente", extra={
+                "selector": selector
+            })
             return True
         except TimeoutException:
+            logger.selenium_logger.warning("Timeout esperando que elemento desaparezca", extra={
+                "selector": selector,
+                "timeout": timeout
+            })
             return False
 
 class DebugHelper:
@@ -281,8 +440,18 @@ class DebugHelper:
             driver: WebDriver instance
             max_buttons: Número máximo de botones a mostrar
         """
+        logger.selenium_logger.debug("=== LISTANDO BOTONES PARA DEBUG ===", extra={
+            "max_buttons": max_buttons
+        })
+        
         try:
             buttons = driver.find_elements(By.TAG_NAME, "button")
+            
+            logger.selenium_logger.info("Botones encontrados en página", extra={
+                "total_buttons": len(buttons),
+                "showing_max": max_buttons
+            })
+            
             print(f"🔍 Botones disponibles en la página ({len(buttons)}):")
             
             for i, btn in enumerate(buttons[:max_buttons]):
@@ -291,14 +460,28 @@ class DebugHelper:
                     btn_class = btn.get_attribute("class") or "Sin clase"
                     btn_title = btn.get_attribute("title") or "Sin title"
                     
+                    button_info = {
+                        "index": i + 1,
+                        "text": btn_text,
+                        "class": btn_class[:50],
+                        "title": btn_title
+                    }
+                    
+                    logger.selenium_logger.debug("Botón encontrado", extra=button_info)
                     print(f"   {i+1}. Texto: '{btn_text}' | Clase: '{btn_class[:50]}...' | Title: '{btn_title}'")
                 except:
                     continue
                     
             if len(buttons) > max_buttons:
+                logger.selenium_logger.debug("Botones adicionales no mostrados", extra={
+                    "hidden_buttons": len(buttons) - max_buttons
+                })
                 print(f"   ... y {len(buttons) - max_buttons} botones más")
                 
         except Exception as e:
+            logger.selenium_logger.error("Error listando botones", extra={
+                "error": str(e)
+            })
             print(f"❌ Error listando botones: {e}")
 
     @staticmethod

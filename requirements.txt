@@ -1,0 +1,15 @@
+# 📦 Dependencias del proyecto FDA/Shopify Automation
+
+# Selenium para automatización web
+selenium>=4.0.0
+
+# Requests para API calls
+requests>=2.25.0
+
+# BeautifulSoup para parsing HTML
+beautifulsoup4>=4.9.0
+
+# Dependencias adicionales opcionales para desarrollo
+# pytest>=7.0.0
+# black>=22.0.0
+# flake8>=4.0.0 

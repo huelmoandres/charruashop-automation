@@ -21,37 +21,43 @@ from src.constants.timeouts import SleepTimes, ElementTimeouts
 from src.constants.selectors import FDASelectors, ModalSelectors
 from src.constants.messages import LogMessages, UserMessages, ProcessMessages
 from src.utils.selenium_helpers import ElementFinder, ClickHelper, DebugHelper, WaitHelper
+from src.core.logger import AutomationLogger
+
+# Inicializar logger
+logger = AutomationLogger.get_instance()
 
 def click_second_save_and_continue(driver, wait):
     """
     Hace clic en el segundo botón "Save & Continue" en la nueva vista
     usando helpers y selectores centralizados
     """
+    logger.fda_logger.info("=== BUSCANDO SEGUNDO BOTÓN SAVE & CONTINUE ===")
+    
     try:
-        print(LogMessages.SEARCHING_ELEMENT.format(element="segundo botón 'Save & Continue'"))
-        
         # Esperar a que la nueva vista se cargue (optimizado)
         time.sleep(SleepTimes.FORM_LOAD)
+        logger.fda_logger.debug("Esperando carga de nueva vista", extra={"sleep_time": SleepTimes.FORM_LOAD})
         
         # Scroll inteligente hacia abajo para elementos lazy loading
-        print("📜 Scroll inteligente para cargar elementos...")
+        logger.fda_logger.debug("Ejecutando scroll inteligente para cargar elementos...")
         ClickHelper.scroll_to_bottom_smart(driver)
         
         # Búsqueda directa por texto usando DebugHelper
         save_button = DebugHelper.find_button_by_exact_text(driver, "SAVE & CONTINUE")
         
         if save_button:
-            print("✅ Botón encontrado por búsqueda directa")
+            logger.fda_logger.info("Botón encontrado por búsqueda directa")
             success = ClickHelper.safe_click_with_scroll(
                 driver, save_button, "segundo Save & Continue"
             )
             
             if success:
                 time.sleep(SleepTimes.SAVE_PROCESSING)
+                logger.fda_logger.info("Segundo Save & Continue clickeado exitosamente (búsqueda directa)")
                 return True
         
         # Método de respaldo: Múltiples selectores centralizados
-        print("🔄 Método de respaldo: selectores centralizados...")
+        logger.fda_logger.info("Ejecutando método de respaldo con selectores centralizados")
         
         # Crear wait más corto para no tardar tanto
         short_wait = WebDriverWait(driver, ElementTimeouts.SHORT)
@@ -67,6 +73,11 @@ def click_second_save_and_continue(driver, wait):
             "//button[contains(@class, 'button-stepper')]//span[contains(text(), 'Save')]"
         ]
         
+        logger.fda_logger.debug("Buscando con múltiples selectores", extra={
+            "selectors_count": len(save_selectors),
+            "timeout": ElementTimeouts.SHORT
+        })
+        
         save_button = ElementFinder.find_by_multiple_selectors(
             driver, short_wait, save_selectors, "segundo botón Save & Continue"
         )
@@ -78,27 +89,34 @@ def click_second_save_and_continue(driver, wait):
             
             if success:
                 time.sleep(SleepTimes.SAVE_PROCESSING)
+                logger.fda_logger.info("Segundo Save & Continue clickeado exitosamente (selector)")
                 return True
         
         # Debug automático usando helper
-        print("❌ No se pudo encontrar el segundo botón 'Save & Continue'")
+        logger.fda_logger.error("No se pudo encontrar el segundo botón 'Save & Continue'")
         DebugHelper.analyze_save_continue_buttons(driver)
         
         return False
         
     except Exception as e:
-        print(f"❌ Error haciendo clic en segundo 'Save & Continue': {e}")
+        logger.fda_logger.error("Error haciendo clic en segundo 'Save & Continue'", extra={"error": str(e)})
+        logger.error_logger.error("Step 03 save button click failed", extra={
+            "source_module": "fda_prior_notice_step_03",
+            "function": "click_second_save_and_continue",
+            "error": str(e)
+        })
         return False
 
 def handle_confirmation_modal(driver, wait):
     """
     Maneja el modal de confirmación si aparece usando selectores centralizados
     """
+    logger.fda_logger.info("🔍 Verificando modal de confirmación...")
+    
     try:
-        print("🔍 Verificando si aparece modal de confirmación...")
-        
         # Esperar un poco para que aparezca el modal (optimizado)
         time.sleep(SleepTimes.MODAL_APPEAR)
+        logger.fda_logger.debug("Esperando aparición de modal", extra={"sleep_time": SleepTimes.MODAL_APPEAR})
         
         # Múltiples selectores centralizados para modales
         modal_selectors = [
@@ -123,12 +141,17 @@ def handle_confirmation_modal(driver, wait):
         # Usar wait más corto para verificar modal
         short_wait = WebDriverWait(driver, ElementTimeouts.MODAL)
         
+        logger.fda_logger.debug("Buscando modal con múltiples selectores", extra={
+            "selectors_count": len(modal_selectors),
+            "timeout": ElementTimeouts.MODAL
+        })
+        
         modal_button = ElementFinder.find_by_multiple_selectors(
             driver, short_wait, modal_selectors, "botón de modal"
         )
         
         if modal_button:
-            print("✅ Modal de confirmación encontrado!")
+            logger.fda_logger.info("✅ Modal de confirmación encontrado!")
             
             success = ClickHelper.safe_click_with_scroll(
                 driver, modal_button, "botón de confirmación"
@@ -136,26 +159,27 @@ def handle_confirmation_modal(driver, wait):
             
             if success:
                 time.sleep(SleepTimes.MODAL_PROCESSING)
-                print(LogMessages.PROCESS_COMPLETED.format(process="confirmación de modal"))
+                logger.fda_logger.info("Modal de confirmación procesado exitosamente")
                 return True
         else:
-            print("ℹ️ No se detectó modal de confirmación (esto es normal)")
+            logger.fda_logger.info("ℹ️ No se detectó modal de confirmación (esto es normal)")
         
         return True  # True porque es opcional
         
     except Exception as e:
-        print(f"⚠️ Error manejando modal de confirmación: {e}")
+        logger.fda_logger.warning("Error manejando modal de confirmación", extra={"error": str(e)})
         return True  # No fallar el proceso por problemas de modal
 
 def wait_for_final_processing(driver):
     """
     Espera a que se complete el procesamiento final usando timeouts centralizados
     """
+    logger.fda_logger.info("⏳ Esperando procesamiento final...")
+    
     try:
-        print("⏳ Esperando procesamiento final...")
-        
         # Esperar procesamiento principal
         time.sleep(SleepTimes.FINAL_PROCESSING)
+        logger.fda_logger.debug("Esperando procesamiento principal", extra={"sleep_time": SleepTimes.FINAL_PROCESSING})
         
         # Verificar si hay indicadores de carga
         loading_indicators = [
@@ -169,6 +193,11 @@ def wait_for_final_processing(driver):
         # Wait corto para indicadores de carga
         short_wait = WebDriverWait(driver, ElementTimeouts.SHORT)
         
+        logger.fda_logger.debug("Verificando indicadores de carga", extra={
+            "indicators_count": len(loading_indicators),
+            "timeout": ElementTimeouts.SHORT
+        })
+        
         for selector in loading_indicators:
             try:
                 loading_element = short_wait.until(
@@ -176,12 +205,12 @@ def wait_for_final_processing(driver):
                 )
                 
                 if loading_element:
-                    print("🔄 Detectado indicador de carga, esperando...")
+                    logger.fda_logger.info("🔄 Detectado indicador de carga, esperando...")
                     # Esperar a que desaparezca
                     WebDriverWait(driver, ElementTimeouts.LOADING).until(
                         EC.invisibility_of_element(loading_element)
                     )
-                    print("✅ Indicador de carga desapareció")
+                    logger.fda_logger.info("✅ Indicador de carga desapareció")
                     break
             except TimeoutException:
                 continue
@@ -196,6 +225,10 @@ def wait_for_final_processing(driver):
             "//div[contains(@class, 'alert-success')]"
         ]
         
+        logger.fda_logger.debug("Verificando indicadores de éxito", extra={
+            "indicators_count": len(success_indicators)
+        })
+        
         for selector in success_indicators:
             try:
                 success_element = short_wait.until(
@@ -204,16 +237,16 @@ def wait_for_final_processing(driver):
                 
                 if success_element:
                     success_text = success_element.text.strip()
-                    print(f"✅ Indicador de éxito encontrado: '{success_text}'")
+                    logger.fda_logger.info("✅ Indicador de éxito encontrado", extra={"success_text": success_text})
                     return True
             except TimeoutException:
                 continue
         
-        print("ℹ️ No se encontraron indicadores específicos, asumiendo éxito")
+        logger.fda_logger.info("ℹ️ No se encontraron indicadores específicos, asumiendo éxito")
         return True
         
     except Exception as e:
-        print(f"⚠️ Error durante espera de procesamiento: {e}")
+        logger.fda_logger.warning("Error durante espera de procesamiento", extra={"error": str(e)})
         return True  # No fallar por esto
 
 def execute_step_03(driver, wait=None):
@@ -221,43 +254,51 @@ def execute_step_03(driver, wait=None):
     Ejecuta el paso 3 completo: Guardar final y confirmación
     Función pública para mantener compatibilidad
     """
+    logger.fda_logger.info("🔄 EJECUTANDO PASO 3: FINAL SAVE")
+    
     try:
-        print(f"\n{ProcessMessages.STEP_INDICATOR.format(step=3, description='Final Save')}")
-        print("=" * 50)
-        
         # Crear wait si no se proporciona
         if wait is None:
             wait = WebDriverWait(driver, ElementTimeouts.DEFAULT)
         
+        logger.fda_logger.debug("WebDriverWait configurado", extra={"timeout": ElementTimeouts.DEFAULT})
+        
         # Paso 1: Hacer clic en segundo Save & Continue
-        print(f"\n📝 Paso 3.1: Segundo botón 'Save & Continue'")
+        logger.fda_logger.info("📝 Paso 3.1: Segundo botón 'Save & Continue'")
         if not click_second_save_and_continue(driver, wait):
-            print(LogMessages.PROCESS_FAILED.format(process="segundo Save & Continue"))
+            logger.fda_logger.error("Falló segundo Save & Continue")
             return False
         
         # Paso 2: Manejar modal de confirmación si aparece
-        print(f"\n🔍 Paso 3.2: Verificar modal de confirmación")
+        logger.fda_logger.info("🔍 Paso 3.2: Verificar modal de confirmación")
         if not handle_confirmation_modal(driver, wait):
-            print("⚠️ Problema con modal de confirmación, pero continuando...")
+            logger.fda_logger.warning("Problema con modal de confirmación, pero continuando...")
         
         # Paso 3: Esperar procesamiento final
-        print(f"\n⏳ Paso 3.3: Esperar procesamiento final")
+        logger.fda_logger.info("⏳ Paso 3.3: Esperar procesamiento final")
         if not wait_for_final_processing(driver):
-            print("⚠️ Procesamiento final incierto, pero continuando...")
+            logger.fda_logger.warning("Procesamiento final incierto, pero continuando...")
         
         # Proceso completado
-        print(f"\n{LogMessages.PROCESS_COMPLETED.format(process='PASO 3 - Final Save')}")
-        print(ProcessMessages.SUCCESS_SUMMARY)
-        print("📊 Resumen de lo ejecutado:")
-        print("   ✅ Segundo Save & Continue clickeado")
-        print("   ✅ Modal de confirmación manejado")
-        print("   ✅ Procesamiento final completado")
-        print("\n🎯 El Prior Notice debería estar completamente guardado en FDA")
+        logger.fda_logger.info("✅ PASO 3 - Final Save COMPLETADO")
+        logger.fda_logger.info("📊 Resumen de lo ejecutado:", extra={
+            "segundo_save_continue": "Clickeado",
+            "modal_confirmacion": "Manejado",
+            "procesamiento_final": "Completado"
+        })
+        
+        logger.fda_logger.info("🎯 El Prior Notice debería estar completamente guardado en FDA")
         
         return True
         
     except Exception as e:
-        print(f"❌ Error durante el Paso 3: {e}")
+        logger.fda_logger.error("Error durante el Paso 3", extra={"error": str(e)})
+        logger.error_logger.error("Step 03 execution failed", extra={
+            "source_module": "fda_prior_notice_step_03",
+            "function": "execute_step_03",
+            "error": str(e),
+            "error_type": type(e).__name__
+        })
         return False
 
 def debug_step_03(driver):

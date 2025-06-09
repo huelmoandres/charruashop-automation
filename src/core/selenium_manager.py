@@ -1,26 +1,31 @@
 """
 Manager central para Selenium WebDriver
 Centraliza la configuración y gestión del driver de Selenium
+Ahora integra logging avanzado y screenshots automáticos
 """
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import WebDriverException, TimeoutException
 import os
+import time
 from typing import Optional
 
 from ..constants.timeouts import DEFAULT_WAIT
+from .logger import get_logger
+from ..utils.screenshot_utils import create_screenshot_manager
 
 class SeleniumManager:
     """
     Clase central para gestionar el driver de Selenium
-    Proporciona configuración estándar y métodos de utilidad
+    Proporciona configuración estándar, métodos de utilidad y logging integrado
     """
     
     def __init__(self, headless: bool = False, user_data_dir: Optional[str] = None):
         """
-        Inicializa el manager de Selenium
+        Inicializa el manager de Selenium con logging integrado
         
         Args:
             headless: Si ejecutar Chrome en modo headless
@@ -30,6 +35,12 @@ class SeleniumManager:
         self.user_data_dir = user_data_dir or self._get_default_user_data_dir()
         self.driver = None
         self.wait = None
+        
+        # Inicializar logger y screenshot manager
+        self.logger = get_logger()
+        self.screenshot_manager = None
+        
+        self.logger.info("🚀 SeleniumManager inicializado", module='selenium')
     
     def _get_default_user_data_dir(self) -> str:
         """Obtiene el directorio de datos de usuario por defecto"""
@@ -38,28 +49,38 @@ class SeleniumManager:
     
     def _setup_chrome_options(self) -> Options:
         """
-        Configura las opciones de Chrome
+        Configura las opciones de Chrome con logging detallado
         
         Returns:
             Options configuradas para Chrome
         """
+        self.logger.debug("🔧 Configurando opciones de Chrome", module='selenium')
+        
         options = Options()
         
         # Configuraciones básicas
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--disable-web-security")
-        options.add_argument("--allow-running-insecure-content")
+        basic_args = [
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--disable-extensions",
+            "--disable-web-security",
+            "--allow-running-insecure-content"
+        ]
+        
+        for arg in basic_args:
+            options.add_argument(arg)
+            self.logger.debug(f"   + Argumento: {arg}", module='selenium')
         
         # User data directory para mantener sesión
         if self.user_data_dir:
             options.add_argument(f"--user-data-dir={self.user_data_dir}")
+            self.logger.debug(f"   + User data dir: {self.user_data_dir}", module='selenium')
         
         # Modo headless si se especifica
         if self.headless:
             options.add_argument("--headless")
+            self.logger.info("   🕶️ Modo headless habilitado", module='selenium')
         
         # Configuraciones de ventana
         options.add_argument("--window-size=1920,1080")
@@ -77,11 +98,12 @@ class SeleniumManager:
         }
         options.add_experimental_option("prefs", prefs)
         
+        self.logger.info("✅ Opciones de Chrome configuradas", module='selenium')
         return options
     
     def start_driver(self, driver_path: str = "./drivers/chromedriver") -> webdriver.Chrome:
         """
-        Inicia el driver de Chrome con la configuración establecida
+        Inicia el driver de Chrome con logging completo y screenshots automáticos
         
         Args:
             driver_path: Ruta al ejecutable de ChromeDriver
@@ -93,18 +115,27 @@ class SeleniumManager:
             Exception: Si no se puede iniciar el driver
         """
         try:
+            self.logger.info("🔄 Iniciando driver de Chrome...", module='selenium')
+            
             # Verificar que el driver existe
             if not os.path.exists(driver_path):
-                raise FileNotFoundError(f"ChromeDriver no encontrado en: {driver_path}")
+                error_msg = f"ChromeDriver no encontrado en: {driver_path}"
+                self.logger.error(error_msg, module='selenium')
+                raise FileNotFoundError(error_msg)
+            
+            self.logger.debug(f"✅ ChromeDriver encontrado en: {driver_path}", module='selenium')
             
             # Configurar el servicio
             service = Service(driver_path)
+            self.logger.debug("🔧 Servicio de Chrome configurado", module='selenium')
             
             # Configurar opciones
             options = self._setup_chrome_options()
             
             # Crear el driver
+            start_time = time.time()
             self.driver = webdriver.Chrome(service=service, options=options)
+            startup_time = time.time() - start_time
             
             # Configurar timeouts implícitos
             self.driver.implicitly_wait(DEFAULT_WAIT)
@@ -112,13 +143,33 @@ class SeleniumManager:
             # Crear WebDriverWait
             self.wait = WebDriverWait(self.driver, DEFAULT_WAIT)
             
+            # Inicializar screenshot manager
+            self.screenshot_manager = create_screenshot_manager(self.logger)
+            
+            # Logs de éxito
+            self.logger.info(f"✅ Driver de Chrome iniciado exitosamente ({startup_time:.2f}s)", module='selenium')
+            self.logger.info(f"   📁 User data dir: {self.user_data_dir}", module='selenium')
+            self.logger.info(f"   🖥️ Headless: {self.headless}", module='selenium')
+            self.logger.info(f"   ⏱️ Timeout implícito: {DEFAULT_WAIT}s", module='selenium')
+            
             print(f"✅ Driver de Chrome iniciado exitosamente")
             print(f"   📁 User data dir: {self.user_data_dir}")
             print(f"   🖥️ Headless: {self.headless}")
             
+            # Screenshot inicial opcional
+            if self.screenshot_manager:
+                try:
+                    # Navegar a about:blank para screenshot inicial
+                    self.driver.get("about:blank")
+                    self.screenshot_manager.capture_screenshot(self.driver, "driver_startup", "INFO")
+                except:
+                    pass  # No fallar por screenshot inicial
+            
             return self.driver
             
         except Exception as e:
+            error_msg = f"Error iniciando driver de Chrome: {e}"
+            self.logger.error(error_msg, module='selenium', exception=e)
             print(f"❌ Error iniciando driver de Chrome: {e}")
             raise
     
@@ -141,16 +192,33 @@ class SeleniumManager:
         return self.wait
     
     def close_driver(self):
-        """Cierra el driver de forma segura"""
+        """Cierra el driver de forma segura con logging y resúmenes"""
         if self.driver:
             try:
+                # Screenshot final
+                if self.screenshot_manager:
+                    try:
+                        self.screenshot_manager.capture_screenshot(self.driver, "session_end", "INFO")
+                    except:
+                        pass
+                
+                # Cerrar driver
                 self.driver.quit()
+                self.logger.info("🔧 Driver cerrado exitosamente", module='selenium')
                 print("🔧 Driver cerrado exitosamente")
+                
+                # Log de summary de screenshots
+                if self.screenshot_manager:
+                    summary = self.screenshot_manager.get_screenshot_summary()
+                    self.logger.info(f"📸 Screenshots capturados: {summary.get('total_screenshots', 0)}", module='selenium')
+                
             except Exception as e:
+                self.logger.error(f"⚠️ Error cerrando driver: {e}", module='selenium', exception=e)
                 print(f"⚠️ Error cerrando driver: {e}")
             finally:
                 self.driver = None
                 self.wait = None
+                self.screenshot_manager = None
     
     def take_screenshot(self, filename: str = None) -> str:
         """
@@ -180,18 +248,56 @@ class SeleniumManager:
         print(f"📸 Captura guardada: {filepath}")
         return filepath
     
-    def navigate_to(self, url: str):
+    def navigate_to(self, url: str, take_screenshot: bool = True):
         """
-        Navega a una URL
+        Navega a una URL con logging y screenshots automáticos
         
         Args:
             url: URL de destino
+            take_screenshot: Si tomar screenshot después de navegar
         """
         if not self.driver:
             raise RuntimeError("Driver no iniciado")
         
-        print(f"🔍 Navegando a: {url}")
-        self.driver.get(url)
+        try:
+            self.logger.info(f"🌐 Navegando a: {url}", module='selenium')
+            start_time = time.time()
+            
+            self.driver.get(url)
+            
+            navigation_time = time.time() - start_time
+            self.logger.info(f"✅ Navegación completada ({navigation_time:.2f}s)", module='selenium')
+            
+            # Información adicional de la página
+            try:
+                page_title = self.driver.title
+                current_url = self.driver.current_url
+                self.logger.debug(f"   📄 Título: {page_title}", module='selenium')
+                self.logger.debug(f"   🔗 URL final: {current_url}", module='selenium')
+            except:
+                pass
+            
+            # Screenshot automático
+            if take_screenshot and self.screenshot_manager:
+                try:
+                    clean_url = url.replace('https://', '').replace('http://', '').replace('/', '_')
+                    self.screenshot_manager.capture_screenshot(self.driver, f"navigation_{clean_url}", "INFO")
+                except:
+                    self.logger.warning("⚠️ No se pudo capturar screenshot de navegación", module='selenium')
+            
+            print(f"🔍 Navegando a: {url}")
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error navegando a {url}: {e}", module='selenium', exception=e)
+            
+            # Screenshot de error
+            if self.screenshot_manager:
+                try:
+                    self.screenshot_manager.capture_error_screenshot(self.driver, f"navigation_error_{url}", e)
+                except:
+                    pass
+            
+            raise
     
     def get_current_url(self) -> str:
         """Obtiene la URL actual"""
