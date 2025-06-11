@@ -16,7 +16,12 @@ Pillow>=9.0.0
 # Threading y async para operaciones paralelas (ya incluido en Python 3.x)
 # concurrent.futures (built-in)
 
+# GUI Dependencies - Streamlit
+streamlit>=1.45.0
+plotly>=6.1.0
+
 # Dependencias adicionales opcionales para desarrollo
 # pytest>=7.0.0
 # black>=22.0.0
-# flake8>=4.0.0 
+# flake8>=4.0.0
+openpyxl 

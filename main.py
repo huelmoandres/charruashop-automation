@@ -28,6 +28,9 @@ from src.core.performance import OptimizedPerformanceTracker as PerformanceTrack
 from src.core.optimized_logger import init_optimized_logging
 from src.constants.paths import ORDER_SAMPLE_FILE
 from src.constants.messages import UserMessages
+import argparse
+import inspect
+import os
 
 
 def validate_csv_file(logger) -> bool:
@@ -94,15 +97,38 @@ def main():
     Función principal con logging optimizado sin spam
     Sistema limpio y eficiente
     """
+    # Vaciar el log antes de iniciar
+    log_path = "logs/fda_automation.log"
+    if os.path.exists(log_path):
+        with open(log_path, "w") as f:
+            f.truncate(0)
+
+    # === NUEVO: Argumentos de línea de comandos ===
+    parser = argparse.ArgumentParser(description="FDA Automation CLI")
+    parser.add_argument('--headless', action='store_true', help='Ejecutar Chrome en modo headless')
+    parser.add_argument('--debug', action='store_true', help='Activar modo debug')
+    parser.add_argument('--screenshots', action='store_true', default=True, help='Capturar screenshots (por defecto sí)')
+    parser.add_argument('--no-screenshots', action='store_false', dest='screenshots', help='No capturar screenshots')
+    parser.add_argument('--no-input', action='store_true', help='No pedir input al usuario (modo automático para GUI)')
+    args = parser.parse_args()
+    headless = args.headless
+    debug = args.debug
+    screenshots = args.screenshots
+    no_input = args.no_input
+    # === FIN ARGUMENTOS ===
+
     # Setup inicial del entorno con verificación de dependencias
     if not setup_environment():
         print("❌ Error en setup del entorno")
         return
     
     # Inicializar sistemas optimizados
-    logger = init_optimized_logging()
+    if 'debug' in inspect.signature(init_optimized_logging).parameters:
+        logger = init_optimized_logging(debug=debug)
+    else:
+        logger = init_optimized_logging()
     performance_tracker = PerformanceTracker(logger)  
-    screenshot_manager = ScreenshotManager(logger)
+    screenshot_manager = ScreenshotManager(logger) if screenshots else None
     
     # Crear ProcessManager con todas las dependencias
     process_manager = ProcessManager(
@@ -114,17 +140,20 @@ def main():
     try:
         # Inicializar sesión con configuración estructurada
         config = process_manager.initialize_session("fda_automation")
-        
         print(f"🔍 Sesión: {config.session_id}")
         print("=" * 50)
         
         # Confirmar inicio con validación mejorada
-        if not process_manager.get_user_confirmation(UserMessages.START_PROCESS):
+        if no_input:
+            user_confirmed = True
+        else:
+            user_confirmed = process_manager.get_user_confirmation(UserMessages.START_PROCESS)
+        if not user_confirmed:
             print("❌ Cancelado")
             return
         
         # Inicializar Selenium con gestión optimizada
-        with SeleniumManager() as driver:
+        with SeleniumManager(headless=headless) as driver:
             print(f"\n🌐 Browser OK")
             
             # FASE 1: Navegación inicial usando ProcessManager
@@ -156,10 +185,12 @@ def main():
             # Mostrar estado final compacto
             if prior_notice_result.success:
                 print("🎉 ¡Prior Notice creado exitosamente!")
-                input(f"\n⏸️ Browser abierto para verificar. Presiona Enter para cerrar...")
+                if not no_input:
+                    input(f"\n⏸️ Browser abierto para verificar. Presiona Enter para cerrar...")
             else:
                 print(f"❌ Error: {prior_notice_result.error}")
-                input(f"\n🔍 Browser abierto para debug. Presiona Enter para cerrar...")
+                if not no_input:
+                    input(f"\n🔍 Browser abierto para debug. Presiona Enter para cerrar...")
     
     except KeyboardInterrupt:
         logger.warning("Proceso interrumpido", module="main")

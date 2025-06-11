@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+
 """
 Herramienta para convertir números de orden cortos de Shopify a IDs largos
 y exportar pedidos usando números cortos

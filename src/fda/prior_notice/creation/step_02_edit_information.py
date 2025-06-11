@@ -239,135 +239,127 @@ def update_state_to_tennessee(driver, wait):
         })
         return False
 
-def update_port_of_arrival_date(driver, wait):
+def update_port_of_arrival_date(driver, wait, no_input=False):
     """
     Actualiza el campo portOfArrivalDate con helpers avanzados y mensajes centralizados
     """
     try:
         print(LogMessages.SEARCHING_ELEMENT.format(element="input portOfArrivalDate"))
-        
-        # Usando selector centralizado
         date_input = wait.until(
             EC.presence_of_element_located((By.ID, FDASelectors.PORT_ARRIVAL_DATE_INPUT))
         )
-        
         print(LogMessages.ELEMENT_FOUND.format(element="campo portOfArrivalDate"))
         print(f"📋 Tipo de input: {date_input.get_attribute('class')}")
-        
-        # Mostrar instrucciones centralizadas
         print(UserMessages.DATE_FORMAT_HELP)
-        
-        while True:
-            arrival_date = input(UserMessages.ENTER_DATE).strip()
-            
-            if not arrival_date:
-                print(UserMessages.EMPTY_DATE)
-                continue
-            
-            # Validación más estricta para formato MM/DD/YYYY
+        if no_input:
+            print("Por favor, ingresa la fecha manualmente en el navegador y haz clic en continuar. El proceso seguirá automáticamente cuando detecte el cambio.")
+            # Esperar a que el campo tenga un valor válido (MM/DD/YYYY)
             pattern = r'^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(19|20)\d{2}$'
-            
-            if re.match(pattern, arrival_date):
-                # Validación adicional de fechas lógicas
-                parts = arrival_date.split('/')
-                month, day, year = int(parts[0]), int(parts[1]), int(parts[2])
-                
-                if month > 12 or day > 31:
-                    print(UserMessages.INVALID_DATE_VALUES)
+            max_wait = 1800  # 30 minutos
+            start_time = time.time()
+            while True:
+                arrival_date = date_input.get_attribute('value').strip()
+                if re.match(pattern, arrival_date):
+                    print(f"✅ Fecha detectada en campo: {arrival_date}")
+                    break
+                if time.time() - start_time > max_wait:
+                    print("⚠️ Tiempo máximo de espera alcanzado para el ingreso de fecha. El proceso continuará, pero puede fallar si no se completó correctamente.")
+                    break
+                time.sleep(2)
+        else:
+            while True:
+                arrival_date = input(UserMessages.ENTER_DATE).strip()
+                if not arrival_date:
+                    print(UserMessages.EMPTY_DATE)
                     continue
-                
-                print(f"✅ Formato de fecha válido: {arrival_date}")
-                break
-            else:
-                print(UserMessages.INVALID_DATE_FORMAT)
-                print("💡 Ejemplos: 01/15/2024, 12/25/2023")
-                continue
-        
+                pattern = r'^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(19|20)\d{2}$'
+                if re.match(pattern, arrival_date):
+                    parts = arrival_date.split('/')
+                    month, day, year = int(parts[0]), int(parts[1]), int(parts[2])
+                    if month > 12 or day > 31:
+                        print(UserMessages.INVALID_DATE_VALUES)
+                        continue
+                    print(f"✅ Formato de fecha válido: {arrival_date}")
+                    break
+                else:
+                    print(UserMessages.INVALID_DATE_FORMAT)
+                    print("💡 Ejemplos: 01/15/2024, 12/25/2023")
+                    continue
         # Estrategias múltiples usando timeouts centralizados
         success = False
-        
         # Estrategia 1: InputHelper con limpieza avanzada
         try:
             print("🔄 Estrategia 1: InputHelper con limpieza avanzada")
-            
-            # Limpiar usando helper
             if InputHelper.clear_input_field(driver, date_input):
                 print("🧹 Campo limpiado, enviando fecha...")
                 date_input.send_keys(arrival_date)
-                time.sleep(SleepTimes.FIELD_UPDATE)  # Timeout centralizado
-                
-                # Verificar resultado
+                time.sleep(SleepTimes.FIELD_UPDATE)
                 final_value = date_input.get_attribute('value')
                 if final_value and arrival_date in final_value:
                     print(LogMessages.FIELD_UPDATED.format(field="portOfArrivalDate", value=arrival_date))
                     success = True
-            
         except Exception as e:
             print(f"❌ Estrategia 1 falló: {e}")
-        
         # Estrategia 2: JavaScript completo si falló la primera
         if not success:
             try:
                 print("🔄 Estrategia 2: JavaScript con eventos Angular")
-                
-                # Limpiar completamente con JavaScript
                 driver.execute_script("""
                     var input = arguments[0];
                     input.value = '';
                     input.setAttribute('value', '');
                 """, date_input)
-                
-                time.sleep(SleepTimes.INPUT_CLEAR)  # Timeout centralizado
-                
-                # Establecer el nuevo valor
+                time.sleep(SleepTimes.INPUT_CLEAR)
                 driver.execute_script(f"arguments[0].value = '{arrival_date}';", date_input)
-                
-                # Disparar eventos Angular
                 driver.execute_script("""
                     var input = arguments[0];
                     var inputEvent = new Event('input', { bubbles: true, cancelable: true });
                     var changeEvent = new Event('change', { bubbles: true, cancelable: true });
                     var focusEvent = new Event('focus', { bubbles: true });
                     var blurEvent = new Event('blur', { bubbles: true });
-                    
                     input.dispatchEvent(focusEvent);
                     input.dispatchEvent(inputEvent);
                     input.dispatchEvent(changeEvent);
                     input.dispatchEvent(blurEvent);
                 """, date_input)
-                
-                time.sleep(SleepTimes.FIELD_UPDATE)  # Timeout centralizado
-                
-                # Verificar
+                time.sleep(SleepTimes.FIELD_UPDATE)
                 final_value = date_input.get_attribute('value')
                 if final_value and arrival_date in final_value:
                     print(LogMessages.FIELD_UPDATED.format(field="portOfArrivalDate", value=arrival_date))
                     success = True
-                    
             except Exception as e:
                 print(f"❌ Estrategia 2 falló: {e}")
-        
-        # Verificación final
         final_check_value = date_input.get_attribute('value')
         print(f"\n📊 VERIFICACIÓN FINAL:")
         print(f"   Fecha ingresada: '{arrival_date}'")
         print(f"   Valor en campo:  '{final_check_value}'")
-        
         if success:
             print(LogMessages.PROCESS_COMPLETED.format(process="actualización de fecha"))
             return True
         else:
             print(f"⚠️ Fecha ingresada pero verificación incierta")
-            
-            # Usar mensaje centralizado para confirmación
-            user_confirm = input(UserMessages.FIELD_CORRECT).strip().lower()
-            if user_confirm in ['s', 'si', 'yes', 'y']:
-                print("✅ Usuario confirmó que el campo está correcto")
-                return True
+            if no_input:
+                print("Por favor, verifica manualmente en el navegador si la fecha es correcta y haz clic en continuar. El proceso seguirá automáticamente cuando cambie la página o el campo.")
+                # Esperar a que el campo cambie o la página avance
+                start_time = time.time()
+                max_wait = 1800
+                while True:
+                    new_value = date_input.get_attribute('value')
+                    if new_value != final_check_value:
+                        print("✅ Cambio detectado en el campo de fecha. Continuando...")
+                        return True
+                    if time.time() - start_time > max_wait:
+                        print("⚠️ Tiempo máximo de espera alcanzado para la confirmación manual. Continuando...")
+                        return True
+                    time.sleep(2)
             else:
-                print("❌ Usuario indica que hay problemas con el campo")
-                return False
-        
+                user_confirm = input(UserMessages.FIELD_CORRECT).strip().lower()
+                if user_confirm in ['s', 'si', 'yes', 'y']:
+                    print("✅ Usuario confirmó que el campo está correcto")
+                    return True
+                else:
+                    print("❌ Usuario indica que hay problemas con el campo")
+                    return False
     except TimeoutException:
         print(LogMessages.ELEMENT_NOT_FOUND.format(element="campo portOfArrivalDate"))
         return False

@@ -76,9 +76,11 @@ def main():
         
         # Shopify/Orders Commands
         "shopify:export": "python src/orders/generate_csv.py",
+        "shopify:upload-metafields": "python src/shopify/upload_fda_metafields.py",
         "orders:convert": "python src/orders/order_converter.py",
         "orders:guia": "python src/orders/update_guia_aerea.py",
         "orders:analyze": "python src/orders/csv_utils.py",
+        "shopify:export-fda-mapping": "python src/shopify/export_products_for_fda_mapping.py",
         
         # Logs & Monitoring (OPTIMIZADO)
         "logs:stats": "python src/utils/log_cleaner.py",

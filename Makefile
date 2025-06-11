@@ -3,7 +3,7 @@
 # 
 # Desarrollado por: Andrés Huelmo & Christian Huelmo
 
-.PHONY: help install fda fda-full fda-test shopify-export orders-convert orders-update-guia orders-analyze logs-stats logs-clean logs-view logs-compress clean-auto health performance s l ls c h p logs errors last size start dev run go
+.PHONY: help install fda fda-full fda-test shopify-export orders-convert orders-update-guia orders-analyze logs-stats logs-clean logs-view logs-compress clean-auto health performance s l ls c h p logs errors last size start dev run go shopify-upload-metafields shopify-export-fda-mapping
 
 # 🏛️ Comandos principales FDA (OPTIMIZADO)
 fda:
@@ -84,6 +84,10 @@ h:
 p:
 	@python -c "from src.core.performance import get_global_performance_tracker; print('📊 Performance OK')"
 
+g:
+	@echo "🖥️ Iniciando interfaz gráfica..."
+	streamlit run streamlit_app.py
+
 logs:
 	@tail -10 logs/fda_automation.log
 
@@ -112,6 +116,15 @@ run:
 go:
 	@echo "🏛️ ¡Vamos! FDA automation..."
 	python main.py
+
+# 🖥️ Comandos GUI
+gui:
+	@echo "🖥️ Iniciando interfaz gráfica Streamlit..."
+	streamlit run streamlit_app.py
+
+streamlit:
+	@echo "🖥️ Iniciando Streamlit..."
+	streamlit run streamlit_app.py
 
 # 📦 Comandos de instalación y setup
 install:
@@ -148,6 +161,9 @@ help:
 	@echo "  make fda-full         - Proceso FDA directo"
 	@echo "  make fda-test         - Testing sistema"
 	@echo ""
+	@echo "🖥️ GUI Interface:"
+	@echo "  make g / gui          - Abrir interfaz gráfica Streamlit"
+	@echo ""
 	@echo "📊 Logs & Monitoring:"
 	@echo "  make logs-stats       - Estadísticas completas"
 	@echo "  make logs-clean       - Limpieza automática"
@@ -162,6 +178,14 @@ help:
 	@echo "💡 TIP: Usa comandos de 1 letra para máxima velocidad!"
 	@echo "💡 Ejemplos: 'make s' 'make l' 'make c' ⚡"
 	@echo ""
+
+shopify-upload-metafields:
+	@echo "🛒 Subiendo códigos FDA y fabricante a Shopify (metafields)..."
+	python src/shopify/upload_fda_metafields.py
+
+shopify-export-fda-mapping:
+	@echo "🛒 Exportando productos para mapeo FDA..."
+	python src/shopify/export_products_for_fda_mapping.py
 
 # Default target
 .DEFAULT_GOAL := help 
